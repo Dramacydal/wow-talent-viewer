@@ -1,0 +1,26 @@
+# .NET
+extractor/**/bin/
+extractor/**/obj/
+*.user
+
+# PHP / Symfony
+web/vendor/
+web/var/
+web/.env.local
+web/.env.local.php
+web/.env.*.local
+web/public/bundles/
+web/public/icons
+
+# Node (Vue build tooling inside web/)
+web/node_modules/
+
+# Generated icon assets (produced by extractor, not source)
+storage/icons/*
+!storage/icons/.gitkeep
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
