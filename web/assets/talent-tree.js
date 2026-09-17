@@ -14,6 +14,7 @@ import './styles/talent-tree.css';
  */
 const CELL = 44;
 const GAP = 22; // ~half the icon size, per feedback - was 6 (too tight)
+const ARROW_LEN = 9; // must match the marker's markerWidth/markerHeight below
 
 function cellCenter(tier, columnIndex) {
     return {
@@ -183,15 +184,22 @@ createApp({
                     // pixels, or they visually read as one line that forks partway down.
                     // Going right first, at the source's own y, means the two paths only
                     // ever share their single common starting POINT, never a segment.
-                    // The arrowhead should stop at the target ICON's edge, not travel all
-                    // the way to its center (which the polyline math otherwise uses
-                    // throughout, for correct bend geometry) - pull back only the final
-                    // endpoint by half a cell, opposite the direction of travel.
+                    // The arrowhead tip should land on the target ICON's edge, not travel
+                    // all the way to its center (which the polyline math otherwise uses
+                    // throughout, for correct bend geometry). The polyline itself is drawn
+                    // even shorter than that - pulled back by the marker's own length on
+                    // top of the half-cell edge offset - so the line's stroke ends where
+                    // the arrow's WIDE base is (fully covering the line's flat end cap),
+                    // and only the solid triangle occupies the last ARROW_LEN px out to the
+                    // edge. Ending the line at the tip itself looked "blunt": a line this
+                    // thick meeting a mathematically zero-width point leaves the line's own
+                    // squared-off cap sticking out past the tip on both sides.
+                    const pullback = CELL / 2 + ARROW_LEN;
                     const points = a.x === b.x
-                        ? `${a.x},${a.y} ${b.x},${b.y - CELL / 2}`
+                        ? `${a.x},${a.y} ${b.x},${b.y - pullback}`
                         : a.y === b.y
-                            ? `${a.x},${a.y} ${b.x - Math.sign(b.x - a.x) * CELL / 2},${a.y}`
-                            : `${a.x},${a.y} ${b.x},${a.y} ${b.x},${b.y - CELL / 2}`;
+                            ? `${a.x},${a.y} ${b.x - Math.sign(b.x - a.x) * pullback},${a.y}`
+                            : `${a.x},${a.y} ${b.x},${a.y} ${b.x},${b.y - pullback}`;
                     lines.push({
                         key: `${prereq.requiresTalentId}-${talent.id}`,
                         points,
@@ -243,10 +251,15 @@ createApp({
         <div class="tt-page">
             <svg width="0" height="0" style="position: absolute;">
                 <defs>
-                    <marker id="tt-arrow-gray" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto">
+                    <!-- refX=0: the marker anchors at its WIDE base (x=0), not the pointed
+                         tip - the polyline's own endpoint (and its stroke's flat end cap)
+                         sits under that wide base where it's fully covered, and the tip
+                         (x=10) extends ARROW_LEN px further out from there. See the
+                         pullback comment in connectors() for why. -->
+                    <marker id="tt-arrow-gray" viewBox="0 0 10 10" refX="0" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto">
                         <path d="M0,0 L10,5 L0,10 z" fill="#6b6b6b" />
                     </marker>
-                    <marker id="tt-arrow-gold" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto">
+                    <marker id="tt-arrow-gold" viewBox="0 0 10 10" refX="0" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto">
                         <path d="M0,0 L10,5 L0,10 z" fill="#c9a227" />
                     </marker>
                 </defs>
