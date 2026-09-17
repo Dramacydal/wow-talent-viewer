@@ -19,6 +19,9 @@ return args[0] switch
     "spike-talenttab" => SpikeTalentTab(args[1], args[2]),
     "classes-with-talents" => ClassesWithTalents(args[1], args[2]),
     "list-talenttabs" => ListTalentTabs(args[1], args[2]),
+    "spike-spell" => SpikeSpell(args[1], args[2]),
+    "raw-talent-record" => RawTalentRecord(args[1], int.Parse(args[2])),
+    "raw-talent-by-id" => RawTalentById(args[1], int.Parse(args[2])),
     _ => Fail($"Unknown command: {args[0]}")
 };
 
@@ -143,6 +146,101 @@ static int SpikeTalentTab(string clientDir, string build)
     {
         Console.WriteLine($"  #{t.Id} name=\"{t.Name}\" icon={t.SpellIconId} raceMask={t.RaceMask} classMask={t.ClassMask} " +
                            $"order={t.OrderIndex?.ToString() ?? "n/a"} bg={t.BackgroundFile ?? "n/a"}");
+    }
+
+    return 0;
+}
+
+// Bypasses DBCD entirely: parses one Talent.dbc record by hand from raw bytes, at the known
+// byte offsets for layout B (ID,TabID,TierID,ColumnIndex,SpellRank[9],PrereqTalent[3],
+// PrereqRank[3],Flags,RequiredSpellID, all int32, matching WoWDBDefs' declared field order).
+// Used to check whether DBCD's field mapping is trustworthy for this table.
+static int RawTalentRecord(string clientDir, int recordIndex)
+{
+    using var archive = OpenPatchedDbc(clientDir);
+    var bytes = archive.ReadFile(@"DBFilesClient\Talent.dbc");
+
+    var recordCount = BitConverter.ToUInt32(bytes, 4);
+    var recordSize = BitConverter.ToUInt32(bytes, 12);
+    if (recordIndex < 0 || recordIndex >= recordCount)
+        return Fail($"recordIndex out of range (0..{recordCount - 1})");
+
+    var offset = 20 + recordIndex * (int)recordSize;
+    int I(int fieldOffset) => BitConverter.ToInt32(bytes, offset + fieldOffset);
+
+    var id = I(0);
+    var tabId = I(4);
+    var tier = I(8);
+    var col = I(12);
+    var ranks = Enumerable.Range(0, 9).Select(i => I(16 + i * 4)).ToArray();
+    var prereqTalent = Enumerable.Range(0, 3).Select(i => I(52 + i * 4)).ToArray();
+    var prereqRank = Enumerable.Range(0, 3).Select(i => I(64 + i * 4)).ToArray();
+    var flags = I(76);
+    var requiredSpell = recordSize >= 84 ? I(80) : (int?)null;
+
+    Console.WriteLine($"raw record[{recordIndex}] @byte {offset}: id={id} tabId={tabId} tier={tier} col={col} " +
+                       $"ranks=[{string.Join(",", ranks)}] prereqTalent=[{string.Join(",", prereqTalent)}] " +
+                       $"prereqRank=[{string.Join(",", prereqRank)}] flags={flags} requiredSpell={requiredSpell?.ToString() ?? "n/a"}");
+
+    return 0;
+}
+
+// Scans every raw record (not just index 0) for the one whose real ID field equals
+// targetId — WDBC records are NOT necessarily physically sorted by ID, so "record at
+// index 0" and "record with ID==1" can be two entirely different rows.
+static int RawTalentById(string clientDir, int targetId)
+{
+    using var archive = OpenPatchedDbc(clientDir);
+    var bytes = archive.ReadFile(@"DBFilesClient\Talent.dbc");
+
+    var recordCount = (int)BitConverter.ToUInt32(bytes, 4);
+    var recordSize = (int)BitConverter.ToUInt32(bytes, 12);
+
+    for (var recordIndex = 0; recordIndex < recordCount; recordIndex++)
+    {
+        var offset = 20 + recordIndex * recordSize;
+        var id = BitConverter.ToInt32(bytes, offset);
+        if (id != targetId) continue;
+
+        int I(int fieldOffset) => BitConverter.ToInt32(bytes, offset + fieldOffset);
+        var tabId = I(4);
+        var tier = I(8);
+        var col = I(12);
+        var ranks = Enumerable.Range(0, 9).Select(i => I(16 + i * 4)).ToArray();
+
+        Console.WriteLine($"found id={id} at physical record index {recordIndex} (byte {offset}): " +
+                           $"tabId={tabId} tier={tier} col={col} ranks=[{string.Join(",", ranks)}]");
+        return 0;
+    }
+
+    return Fail($"No record with ID={targetId} found among {recordCount} records.");
+}
+
+static int SpikeSpell(string clientDir, string build)
+{
+    using var archive = OpenPatchedDbc(clientDir);
+    var client = MakeDbcClient(archive);
+
+    var talents = client.ReadTalents(build);
+    var sample = talents.Take(3);
+
+    foreach (var t in sample)
+    {
+        Console.WriteLine($"Talent #{t.Id} (tab={t.TabId}, tier={t.Tier}, col={t.ColumnIndex}):");
+        foreach (var spellId in t.SpellRanks.Where(id => id != 0))
+        {
+            var spell = client.GetSpell(build, spellId);
+            if (spell is null)
+            {
+                Console.WriteLine($"  spell {spellId}: NOT FOUND");
+                continue;
+            }
+
+            var icon = client.GetSpellIcon(build, spell.SpellIconId);
+            Console.WriteLine($"  spell {spellId}: name=\"{spell.Name}\" subtext=\"{spell.NameSubtext}\" " +
+                               $"icon=\"{icon?.TextureFilename ?? "n/a"}\"");
+            Console.WriteLine($"    desc: {spell.Description}");
+        }
     }
 
     return 0;
