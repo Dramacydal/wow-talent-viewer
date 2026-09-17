@@ -46,6 +46,30 @@ public sealed class DbcClient
         return records;
     }
 
+    public IReadOnlyList<TalentTabRecord> ReadTalentTabs(string build)
+    {
+        // Name_lang is a locstring — without an explicit locale DBCD exposes it as the raw
+        // per-locale string[] instead of resolving one value, so Field<string> throws.
+        var storage = dbcd.Load("TalentTab", build, global::DBCD.Locale.EnUS);
+        var hasOrderIndex = storage.AvailableColumns.Contains("OrderIndex");
+        var hasBackgroundFile = storage.AvailableColumns.Contains("BackgroundFile");
+
+        var records = new List<TalentTabRecord>(storage.Count);
+        foreach (var row in storage.Values)
+        {
+            records.Add(new TalentTabRecord(
+                Id: row.ID,
+                Name: row.Field<string>("Name_lang"),
+                SpellIconId: row.Field<int>("SpellIconID"),
+                RaceMask: row.Field<int>("RaceMask"),
+                ClassMask: row.Field<int>("ClassMask"),
+                OrderIndex: hasOrderIndex ? row.Field<int>("OrderIndex") : null,
+                BackgroundFile: hasBackgroundFile ? row.Field<string>("BackgroundFile") : null));
+        }
+
+        return records;
+    }
+
     private static int[] ReadIntArray(DBCD.DBCDRow row, string fieldName, int count)
     {
         var result = new int[count];

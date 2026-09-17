@@ -16,6 +16,7 @@ return args[0] switch
     "grep-listfile" => GrepListfile(args[1], args[2]),
     "dump-file" => DumpFile(args[1], args[2], args[3]),
     "spike-dbcd" => SpikeDbcd(args[1], args[2]),
+    "spike-talenttab" => SpikeTalentTab(args[1], args[2]),
     _ => Fail($"Unknown command: {args[0]}")
 };
 
@@ -132,6 +133,33 @@ static int SpikeDbcd(string clientDir, string build)
                            $"prereqTalent=[{string.Join(",", t.PrereqTalent)}] " +
                            $"prereqRank=[{string.Join(",", t.PrereqRank)}] " +
                            $"flags={t.Flags} requiredSpell={t.RequiredSpellId?.ToString() ?? "n/a"}");
+    }
+
+    return 0;
+}
+
+static int SpikeTalentTab(string clientDir, string build)
+{
+    var dataDir = Path.Combine(clientDir, "Data");
+
+    using var archive = MpqArchive.Open(Path.Combine(dataDir, "dbc.MPQ"));
+    foreach (var patch in new[] { "patch.MPQ", "patch-2.MPQ" })
+    {
+        var patchPath = Path.Combine(dataDir, patch);
+        if (File.Exists(patchPath))
+            archive.ApplyPatch(patchPath);
+    }
+
+    var definitionsDir = Path.Combine(AppContext.BaseDirectory, "dbd-definitions");
+    var client = new DbcClient(archive, definitionsDir);
+
+    var tabs = client.ReadTalentTabs(build);
+    Console.WriteLine($"DBCD loaded {tabs.Count} TalentTab rows for build {build}");
+
+    foreach (var t in tabs.Take(5))
+    {
+        Console.WriteLine($"  #{t.Id} name=\"{t.Name}\" icon={t.SpellIconId} raceMask={t.RaceMask} classMask={t.ClassMask} " +
+                           $"order={t.OrderIndex?.ToString() ?? "n/a"} bg={t.BackgroundFile ?? "n/a"}");
     }
 
     return 0;
