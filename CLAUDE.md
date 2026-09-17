@@ -28,6 +28,7 @@
 - Все таблицы с данными о талантах скоуплены по `client_build_id` (дерево различается между патчами)
 - Спецификации полей DBC брать из [wowdev/WoWDBDefs](https://github.com/wowdev/WoWDBDefs), не с wowdev.wiki
 - Иконки — дедупликация по content-hash (см. `.claude-docs/architecture.md`), старые PNG никогда не удалять
+- `TalentTab.ID`/любые DBC ID — валидны только внутри одного билда, никогда не сопоставлять между билдами; осиротевшие ссылки (`TabID`, не резолвящийся в реальный `TalentTab` того же билда) — пропускать с логом, не писать битым FK (см. `.claude-docs/gotchas.md`)
 
 ### MUST NOT
 - Не поднимать Docker/локальный MySQL без явного запроса пользователя (см. `.claude-docs/architecture.md`)
