@@ -15,4 +15,18 @@ class TalentPrerequisiteRepository extends ServiceEntityRepository
     {
         parent::__construct($registry, TalentPrerequisite::class);
     }
+
+    /** @param int[] $talentIds @return TalentPrerequisite[] */
+    public function findForTalentIds(array $talentIds): array
+    {
+        if ($talentIds === []) {
+            return [];
+        }
+
+        return $this->createQueryBuilder('p')
+            ->where('p.talent IN (:ids)')
+            ->setParameter('ids', $talentIds)
+            ->getQuery()
+            ->getResult();
+    }
 }

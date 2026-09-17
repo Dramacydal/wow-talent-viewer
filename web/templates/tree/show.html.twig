@@ -1,0 +1,11 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}{{ class.name }} - {{ build.label }} - WoW Vanilla Talents Viewer{% endblock %}
+
+{% block importmap %}{{ importmap('talent-tree') }}{% endblock %}
+
+{% block body %}
+    <div id="talent-tree-app" data-tree-url="{{ path('api_talent_tree', { buildLabel: build.label, classSlug: class.slug }) }}">
+        Loading...
+    </div>
+{% endblock %}

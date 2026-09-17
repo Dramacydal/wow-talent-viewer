@@ -15,4 +15,18 @@ class CharacterClassRepository extends ServiceEntityRepository
     {
         parent::__construct($registry, CharacterClass::class);
     }
+
+    /** @return CharacterClass[] */
+    public function findAllOrderedById(): array
+    {
+        return $this->createQueryBuilder('c')
+            ->orderBy('c.id', \SortDirection::Ascending)
+            ->getQuery()
+            ->getResult();
+    }
+
+    public function findOneBySlug(string $slug): ?CharacterClass
+    {
+        return $this->findOneBy(['slug' => $slug]);
+    }
 }

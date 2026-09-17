@@ -23,6 +23,7 @@
 - Symfony: `cd web && composer install`, `php bin/console <command>` (PHP 8.3 через `update-alternatives`, реальный DB-коннект — в `web/.env.local`, не в git)
 - Миграции схемы: `php bin/console doctrine:migrations:migrate` (новую миграцию — `doctrine:migrations:diff`, но **обязательно проверить сгенерированный файл на DROP/ALTER посторонних таблиц** перед применением — БД пользователя может быть общей с другими его инструментами)
 - Экстракция всех билдов разом: `extractor/scripts/Extract-AllBuilds.ps1` (PowerShell, гоняется пользователем на его машине — ближе к БД, быстрее) — логи по каждому билду пишутся в `.tmp/extract-logs/<build>.log`, читать их напрямую вместо того, чтобы просить пользователя копировать консоль
+- Дев-сервер сайта: `preview_start` с конфигом `symfony-web` из `.claude/launch.json` (`php -S` + `web/public/router.php` + `PHP_CLI_SERVER_WORKERS=4` — оба нюанса объяснены в gotchas.md, **сервер нужно перезапускать после любой правки `web/src/`**)
 
 ## Boundaries
 ### MUST

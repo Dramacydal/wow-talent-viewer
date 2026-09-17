@@ -76,6 +76,19 @@ MySQL — существующий удалённый сервер пользо�
 ## Источники DBC-определений
 Приоритет: `wowdev/WoWDBDefs` (source of truth, тот же что использует DBCD) → `suprsokr/VanillaDBDefs` (резерв только для релизных 1.x, без альфы) → собственный fallback WDBC-ридер для непокрытых альфа-билдов. Подробности и обоснование — в плане `~/.claude/plans/zippy-tumbling-hummingbird.md`.
 
+## Symfony backend (Фаза 3, реализовано)
+- Стек: `symfony/twig-bundle` + `symfony/asset-mapper` (никакого Node/npm/webpack — чистый PHP-стек, ESM через importmap, вендоренные копии npm-пакетов через `bin/console importmap:require`).
+- Vue 3 подключен через importmap как **runtime-only** сборка (`vue.runtime.esm-bundler.js` — то, что реально скачивает `importmap:require vue`, без компилятора шаблонов). Значит **никаких строковых `template: "..."` в компонентах** — только `h()`-рендер-функции (см. `assets/talent-tree.js`).
+- Роуты (все — атрибутами `#[Route]` в контроллерах, `config/routes.yaml` просто их подхватывает):
+  - `GET /` — `HomeController::index` — Twig-пикер (server-rendered `<select>` из репозиториев), редирект на `/tree/{label}/{slug}` через vanilla JS
+  - `GET /tree/{buildLabel}/{classSlug}` — `HomeController::tree` — Twig-страница с контейнером `<div id="talent-tree-app" data-tree-url="...">`, монтируется Vue
+  - `GET /api/builds`, `GET /api/classes` — простые справочники (ручной `$this->json(...)`, без Serializer-компонента — формы данных маленькие и стабильные, не оправдывают доп. зависимость)
+  - `GET /api/builds/{buildLabel}/classes/{classSlug}/talent-tree` — главный эндпоинт (`Api\TalentTreeController`), отдаёт ВСЁ дерево одним запросом (табы+таланты+ранги+пререквизиты), без follow-up запросов с фронта
+- Иконки раздаются через симлинк `web/public/icons -> ../../storage/icons` (создан вручную, не автоматизирован — при переносе на новый сервер пересоздать).
+- JSON API возвращает `iconUrl` уже готовым (`/icons/{hash}.png`), а не голый хэш — фронту не нужно знать паттерн пути.
+- Repository-методы (`findForBuildAndClass` и т.п.) написаны с `JOIN FETCH` (`addSelect('rank')` и т.д.) специально чтобы не бить N+1 запросами по 300+ талантам на удалённую БД — критично при реальной сетевой задержке ~300мс с этого хоста (см. gotchas.md про латентность).
+- **Дев-сервер**: `.claude/launch.json` гоняет `php -S` с `router.php` (см. `web/public/router.php` и его докблок) и `PHP_CLI_SERVER_WORKERS=4` — оба нюанса задокументированы в gotchas.md как реальные пойманные баги, не теоретические. **После правки любого файла в `web/src/` сервер нужно перезапускать** (воркеры держат классы в памяти).
+
 ## DBC-чтение: DBCD (реализовано, не fallback-ридер)
 `Extractor.Dbc.DbcClient` оборачивает [wowdev/DBCD](https://www.nuget.org/packages/DBCD) (NuGet, MIT, поддерживает `net10.0` напрямую):
 - `MpqDbcProvider : IDBCProvider` — кормит DBCD байтами прямо из уже открытого/запатченного `MpqArchive`, без промежуточной экстракции на диск.

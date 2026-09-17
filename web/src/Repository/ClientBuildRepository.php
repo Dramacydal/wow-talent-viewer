@@ -15,4 +15,18 @@ class ClientBuildRepository extends ServiceEntityRepository
     {
         parent::__construct($registry, ClientBuild::class);
     }
+
+    /** @return ClientBuild[] */
+    public function findAllOrderedByBuildNumber(): array
+    {
+        return $this->createQueryBuilder('b')
+            ->orderBy('b.buildNumber', \SortDirection::Ascending)
+            ->getQuery()
+            ->getResult();
+    }
+
+    public function findOneByLabel(string $label): ?ClientBuild
+    {
+        return $this->findOneBy(['label' => $label]);
+    }
 }

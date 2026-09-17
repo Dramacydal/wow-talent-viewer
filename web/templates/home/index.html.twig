@@ -1,0 +1,36 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}WoW Vanilla Talents Viewer{% endblock %}
+
+{% block body %}
+    <main class="picker">
+        <h1>WoW Vanilla Talents Viewer</h1>
+        <form id="picker-form">
+            <label>
+                Client build
+                <select name="build" required>
+                    {% for build in builds %}
+                        <option value="{{ build.label }}">{{ build.label }}</option>
+                    {% endfor %}
+                </select>
+            </label>
+            <label>
+                Class
+                <select name="class" required>
+                    {% for class in classes %}
+                        <option value="{{ class.slug }}">{{ class.name }}</option>
+                    {% endfor %}
+                </select>
+            </label>
+            <button type="submit">View talent tree</button>
+        </form>
+    </main>
+    <script>
+        document.getElementById('picker-form').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const build = e.target.build.value;
+            const cls = e.target.class.value;
+            window.location.href = `/tree/${encodeURIComponent(build)}/${encodeURIComponent(cls)}`;
+        });
+    </script>
+{% endblock %}
