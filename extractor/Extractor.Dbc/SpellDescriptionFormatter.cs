@@ -92,7 +92,7 @@ public sealed partial class SpellDescriptionFormatter(DbcClient dbcClient, strin
 
         if (m.Groups["op"].Success)
         {
-            var opval = double.Parse(m.Groups["opval"].Value);
+            var opval = double.Parse(m.Groups["opval"].Value, System.Globalization.CultureInfo.InvariantCulture);
             value = m.Groups["op"].Value == "/" ? value / opval : value * opval;
         }
 
@@ -101,9 +101,13 @@ public sealed partial class SpellDescriptionFormatter(DbcClient dbcClient, strin
         // Whole numbers print without a decimal point (matches how these appear in the real
         // client tooltip); non-whole (e.g. "$/1000;S1" producing 0.5 seconds) keep one decimal.
         var rounded = Math.Round(value.Value, 2);
+        // InvariantCulture explicitly: this text goes into the database, not straight to a
+        // user's screen, and must not depend on the machine's locale — a run on a
+        // Russian-locale Windows box (comma decimal separator) produced "0,1 sec" instead of
+        // "0.1 sec" before this fix.
         var formatted = rounded == Math.Floor(rounded)
-            ? ((long)rounded).ToString()
-            : rounded.ToString("0.##");
+            ? ((long)rounded).ToString(System.Globalization.CultureInfo.InvariantCulture)
+            : rounded.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture);
 
         // Bare "$d"/"$<spellId>d" (no /N or *N modifier) spells out "N seconds" — matches
         // QSpellWork exactly (always "seconds", even for 1 — a real, if grammatically odd,
