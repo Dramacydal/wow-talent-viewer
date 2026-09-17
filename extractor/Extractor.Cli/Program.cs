@@ -26,7 +26,7 @@ return args[0] switch
     "talents-in-tab" => TalentsInTab(args[1], args[2], int.Parse(args[3])),
     "spike-chrclasses" => SpikeChrClasses(args[1], args[2]),
     "resolve-icon" => ResolveIcon(args[1], args[2], int.Parse(args[3])),
-    "extract-icon" => ExtractIcon(args[1], args[2], int.Parse(args[3]), args[4]),
+    "extract-icon" => ExtractIcon(args[1], args[2], int.Parse(args[3]), args[4], args[5]),
     _ => Fail($"Unknown command: {args[0]}")
 };
 
@@ -221,9 +221,9 @@ static int RawTalentById(string clientDir, int targetId)
     return Fail($"No record with ID={targetId} found among {recordCount} records.");
 }
 
-// Full pipeline for one icon: MPQ -> resolve extension -> BLP decode -> PNG encode ->
-// content-hash filename, written under storagePath (mirrors the real storage/icons/ layout).
-static int ExtractIcon(string clientDir, string build, int spellIconId, string storagePath)
+// Full pipeline for one icon, through IconPipeline (resolve -> hash -> cache check -> decode
+// only on miss). storeFile is the JSON stand-in for the real MySQL icon_sources table.
+static int ExtractIcon(string clientDir, string build, int spellIconId, string storagePath, string storeFile)
 {
     using var archive = OpenPatchedDbc(clientDir);
     var client = MakeDbcClient(archive);
@@ -236,22 +236,11 @@ static int ExtractIcon(string clientDir, string build, int spellIconId, string s
     using var iface = MpqArchive.Open(Path.Combine(dataDir, "interface.MPQ"));
     PatchChain.ApplyAll(iface, dataDir);
 
-    var resolvedPath = IconFileResolver.Resolve(iface, icon.TextureFilename);
-    if (resolvedPath is null)
-        return Fail($"Could not resolve '{icon.TextureFilename}' to a .blp or .tga file");
+    var store = new JsonFileIconSourceStore(storeFile);
+    var pipeline = new IconPipeline(iface, store, storagePath);
+    var result = pipeline.Extract(icon.TextureFilename);
 
-    if (!resolvedPath.EndsWith(".blp", StringComparison.OrdinalIgnoreCase))
-        return Fail($"'{resolvedPath}' is not a .blp — no decoder wired up for that yet");
-
-    var blpBytes = iface.ReadFile(resolvedPath);
-    var pngBytes = BlpConverter.ConvertToPng(blpBytes);
-    var hash = Convert.ToHexString(SHA256.HashData(pngBytes)).ToLowerInvariant();
-
-    Directory.CreateDirectory(storagePath);
-    var outPath = Path.Combine(storagePath, $"{hash}.png");
-    File.WriteAllBytes(outPath, pngBytes);
-
-    Console.WriteLine($"'{resolvedPath}' ({blpBytes.Length}b BLP) -> {outPath} ({pngBytes.Length}b PNG)");
+    Console.WriteLine($"icon '{icon.TextureFilename}': outcome={result.Outcome} iconPath={result.IconPath ?? "n/a"} (store now has {store.Count} entries)");
     return 0;
 }
 
