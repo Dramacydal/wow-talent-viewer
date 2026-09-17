@@ -18,6 +18,7 @@ return args[0] switch
     "spike-dbcd" => SpikeDbcd(args[1], args[2]),
     "spike-talenttab" => SpikeTalentTab(args[1], args[2]),
     "classes-with-talents" => ClassesWithTalents(args[1], args[2]),
+    "list-talenttabs" => ListTalentTabs(args[1], args[2]),
     _ => Fail($"Unknown command: {args[0]}")
 };
 
@@ -139,6 +140,22 @@ static int SpikeTalentTab(string clientDir, string build)
     Console.WriteLine($"DBCD loaded {tabs.Count} TalentTab rows for build {build}");
 
     foreach (var t in tabs.Take(5))
+    {
+        Console.WriteLine($"  #{t.Id} name=\"{t.Name}\" icon={t.SpellIconId} raceMask={t.RaceMask} classMask={t.ClassMask} " +
+                           $"order={t.OrderIndex?.ToString() ?? "n/a"} bg={t.BackgroundFile ?? "n/a"}");
+    }
+
+    return 0;
+}
+
+static int ListTalentTabs(string clientDir, string build)
+{
+    using var archive = OpenPatchedDbc(clientDir);
+    var client = MakeDbcClient(archive);
+    var tabs = client.ReadTalentTabs(build);
+
+    Console.WriteLine($"{build}: {tabs.Count} TalentTab rows total");
+    foreach (var t in tabs.OrderBy(t => t.Id))
     {
         Console.WriteLine($"  #{t.Id} name=\"{t.Name}\" icon={t.SpellIconId} raceMask={t.RaceMask} classMask={t.ClassMask} " +
                            $"order={t.OrderIndex?.ToString() ?? "n/a"} bg={t.BackgroundFile ?? "n/a"}");
