@@ -3,4 +3,5 @@
   <Project Path="Extractor.Cli/Extractor.Cli.csproj" />
   <Project Path="Extractor.Dbc/Extractor.Dbc.csproj" />
   <Project Path="Extractor.Mpq/Extractor.Mpq.csproj" />
+  <Project Path="Extractor.Storage/Extractor.Storage.csproj" />
 </Solution>

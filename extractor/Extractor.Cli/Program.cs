@@ -2,6 +2,8 @@ using System.Security.Cryptography;
 using Extractor.Blp;
 using Extractor.Dbc;
 using Extractor.Mpq;
+using Extractor.Storage;
+using MySqlConnector;
 
 if (args.Length < 1)
 {
@@ -27,6 +29,7 @@ return args[0] switch
     "spike-chrclasses" => SpikeChrClasses(args[1], args[2]),
     "resolve-icon" => ResolveIcon(args[1], args[2], int.Parse(args[3])),
     "extract-icon" => ExtractIcon(args[1], args[2], int.Parse(args[3]), args[4], args[5]),
+    "extract-build" => ExtractBuild(args[1], args[2], args[3], args[4]),
     _ => Fail($"Unknown command: {args[0]}")
 };
 
@@ -260,6 +263,37 @@ static int ResolveIcon(string clientDir, string build, int spellIconId)
 
     var resolved = IconFileResolver.Resolve(iface, icon.TextureFilename);
     Console.WriteLine($"SpellIcon {spellIconId}: TextureFilename=\"{icon.TextureFilename}\" resolved={resolved ?? "NOT FOUND (neither .blp nor .tga)"}");
+
+    return 0;
+}
+
+// Full pipeline for one build: DBC -> MySQL, idempotent (safe to re-run on the same build).
+// envFilePath points at a Symfony .env-style file (e.g. web/.env.local) containing
+// DATABASE_URL — never pass a raw connection string/password on the command line.
+static int ExtractBuild(string clientDir, string build, string envFilePath, string storageIconsDir)
+{
+    var connectionString = EnvFileConnectionString.ReadMySqlConnectionString(envFilePath);
+    var dataDir = Path.Combine(clientDir, "Data");
+    var dbdDefinitionsDir = Path.Combine(AppContext.BaseDirectory, "dbd-definitions");
+
+    using var dbcArchive = MpqArchive.Open(Path.Combine(dataDir, "dbc.MPQ"));
+    PatchChain.ApplyAll(dbcArchive, dataDir);
+
+    using var interfaceArchive = MpqArchive.Open(Path.Combine(dataDir, "interface.MPQ"));
+    PatchChain.ApplyAll(interfaceArchive, dataDir);
+
+    using var connection = new MySqlConnection(connectionString);
+    connection.Open();
+
+    var extractor = new BuildExtractor(connection, dbcArchive, interfaceArchive, dbdDefinitionsDir, build, storageIconsDir, msg => Console.WriteLine($"  {msg}"));
+    var summary = extractor.Run();
+
+    Console.WriteLine($"Build {build} (client_build_id={summary.ClientBuildId}): " +
+                       $"classes={summary.ClassesUpserted}, " +
+                       $"tabs={summary.TalentTabsUpserted} ({summary.TalentTabsSkipped} skipped), " +
+                       $"talents={summary.TalentsUpserted} ({summary.TalentsSkippedOrphanedTab} skipped), " +
+                       $"ranks={summary.RanksUpserted}, " +
+                       $"prereqs={summary.PrerequisitesUpserted} ({summary.PrerequisitesSkippedOrphaned} skipped)");
 
     return 0;
 }

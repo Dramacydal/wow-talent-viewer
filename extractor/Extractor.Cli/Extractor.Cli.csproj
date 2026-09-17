@@ -4,6 +4,7 @@
     <ProjectReference Include="..\Extractor.Mpq\Extractor.Mpq.csproj" />
     <ProjectReference Include="..\Extractor.Dbc\Extractor.Dbc.csproj" />
     <ProjectReference Include="..\Extractor.Blp\Extractor.Blp.csproj" />
+    <ProjectReference Include="..\Extractor.Storage\Extractor.Storage.csproj" />
   </ItemGroup>
 
   <PropertyGroup>

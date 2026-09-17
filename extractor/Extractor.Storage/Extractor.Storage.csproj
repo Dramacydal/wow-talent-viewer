@@ -1,0 +1,19 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="MySqlConnector" Version="2.6.2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Extractor.Dbc\Extractor.Dbc.csproj" />
+    <ProjectReference Include="..\Extractor.Blp\Extractor.Blp.csproj" />
+    <ProjectReference Include="..\Extractor.Mpq\Extractor.Mpq.csproj" />
+  </ItemGroup>
+
+</Project>
