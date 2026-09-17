@@ -13,7 +13,7 @@ import './styles/talent-tree.css';
  * so the grid's actual CSS layout and the JS-computed line endpoints have to agree exactly.
  */
 const CELL = 44;
-const GAP = 6;
+const GAP = 22; // ~half the icon size, per feedback - was 6 (too tight)
 
 function cellCenter(tier, columnIndex) {
     return {
@@ -165,14 +165,18 @@ createApp({
                     const a = cellCenter(from.tier, from.columnIndex);
                     const b = cellCenter(talent.tier, talent.columnIndex);
                     // Same column: straight vertical line. Different column: an elbow -
-                    // down from the source to the midpoint between the two tiers, across,
-                    // then down into the target - not a diagonal, matching how the real
-                    // client/wowhead draw prerequisite arrows.
+                    // down from the source, across, then down into the target - not a
+                    // diagonal, matching how the real client/wowhead draw prerequisite
+                    // arrows. The bend sits right below the SOURCE (middle of the gap
+                    // right after its row), not at the midpoint of the whole span - when
+                    // one source fans out to several targets (straight + elbow), this
+                    // keeps every branch forking at the same point directly under the
+                    // source instead of at a different height per target.
                     const points = a.x === b.x
                         ? `${a.x},${a.y} ${b.x},${b.y}`
                         : (() => {
-                            const midY = (a.y + b.y) / 2;
-                            return `${a.x},${a.y} ${a.x},${midY} ${b.x},${midY} ${b.x},${b.y}`;
+                            const bendY = a.y + CELL / 2 + GAP / 2;
+                            return `${a.x},${a.y} ${a.x},${bendY} ${b.x},${bendY} ${b.x},${b.y}`;
                         })();
                     lines.push({
                         key: `${prereq.requiresTalentId}-${talent.id}`,

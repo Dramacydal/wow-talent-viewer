@@ -1,6 +1,6 @@
 :root {
     --tt-cell: 44px;
-    --tt-gap: 6px;
+    --tt-gap: 22px;
     --tt-bg: #0b0908;
     --tt-panel: #17130f;
     --tt-panel-border: #4a3a22;
@@ -170,6 +170,7 @@ body {
 }
 
 .tt-cell {
+    box-sizing: border-box;
     position: relative;
     width: var(--tt-cell);
     height: var(--tt-cell);
