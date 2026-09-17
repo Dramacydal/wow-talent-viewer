@@ -21,7 +21,11 @@
                 <a class="class-icon class-icon--{{ class.slug }}"
                    href="{{ path('talent_tree_page', { buildLabel: selectedBuild.label, classSlug: class.slug }) }}"
                    title="{{ class.name }}">
-                    <span class="class-icon-label">{{ classAbbreviations[class.slug] ?? class.name|slice(0, 3)|upper }}</span>
+                    {% if class.iconPath %}
+                        <img class="class-icon-img" src="/icons/{{ class.iconPath }}.png" alt="{{ class.name }}">
+                    {% else %}
+                        <span class="class-icon-label">{{ classAbbreviations[class.slug] ?? class.name|slice(0, 3)|upper }}</span>
+                    {% endif %}
                 </a>
             {% else %}
                 <p class="class-row-empty">No classes have talent data on this build.</p>

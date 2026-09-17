@@ -82,10 +82,24 @@ body {
     transform: translateY(-2px);
 }
 
-/* Placeholder colors - the standard WoW class colors, used everywhere in and around the
-   game (character frames, chat, wowhead itself) - not a game asset, just a color code
-   convention. Swap .class-icon-label's background for a real class icon image here once
-   one is extracted/available; the markup won't need to change. */
+.class-icon-img {
+    display: block;
+    width: 56px;
+    height: 56px;
+    border-radius: 8px;
+    border: 2px solid var(--tt-panel-border);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.6);
+    transition: border-color 0.15s, transform 0.15s;
+}
+
+.class-icon:hover .class-icon-img {
+    border-color: var(--tt-gold);
+    transform: translateY(-2px);
+}
+
+/* Fallback-only now that classes.icon_path is populated (kept for any class missing an
+   icon) - the standard WoW class colors, used everywhere in and around the game (character
+   frames, chat, wowhead itself), not a game asset, just a color code convention. */
 .class-icon--warrior .class-icon-label { background: #c79c6e; }
 .class-icon--paladin .class-icon-label { background: #f58cba; }
 .class-icon--hunter .class-icon-label { background: #abd473; }

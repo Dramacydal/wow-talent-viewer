@@ -4,6 +4,8 @@ using Extractor.Dbc;
 using Extractor.Mpq;
 using Extractor.Storage;
 using MySqlConnector;
+using SixLabors.ImageSharp;
+using SixLabors.ImageSharp.Processing;
 
 if (args.Length < 1)
 {
@@ -19,6 +21,7 @@ return args[0] switch
     "grep-raw-desc" => GrepRawDescriptions(args[1], args[2], args[3]),
     "spike-patch-verify" => SpikePatchVerify(args[1], args[2]),
     "grep-listfile" => GrepListfile(args[1], args[2]),
+    "dump-blp-png" => DumpBlpPng(args[1], args[2], args[3]),
     "dump-file" => DumpFile(args[1], args[2], args[3]),
     "spike-dbcd" => SpikeDbcd(args[1], args[2]),
     "spike-talenttab" => SpikeTalentTab(args[1], args[2]),
@@ -33,6 +36,7 @@ return args[0] switch
     "resolve-icon" => ResolveIcon(args[1], args[2], int.Parse(args[3])),
     "extract-icon" => ExtractIcon(args[1], args[2], int.Parse(args[3]), args[4], args[5]),
     "extract-build" => ExtractBuild(args[1], args[2], args[3], args[4]),
+    "extract-class-icons" => ExtractClassIcons(args[1], args[2], args[3]),
     _ => Fail($"Unknown command: {args[0]}")
 };
 
@@ -59,6 +63,30 @@ static DbcClient MakeDbcClient(MpqArchive archive) =>
 
 // Diagnostic: dump the MPQ's internal "(listfile)" pseudo-file (if present) and grep it,
 // so we can find out what a DBC file was actually called before assuming it doesn't exist.
+/// <summary>Decodes one arbitrary BLP (any path, any size - not just Icons/*) straight to a
+/// PNG file on disk, bypassing the content-hash storage pipeline entirely. For inspecting a
+/// texture (dimensions, content) before deciding how to use it - e.g. checking a sprite
+/// sheet's real pixel size against UV coordinates found in a .lua before writing crop code.</summary>
+static int DumpBlpPng(string clientDir, string internalPathNoExt, string outFile)
+{
+    var dataDir = Path.Combine(clientDir, "Data");
+    using var iface = MpqArchive.Open(Path.Combine(dataDir, "interface.MPQ"));
+    PatchChain.ApplyAll(iface, dataDir);
+
+    var resolved = IconFileResolver.Resolve(iface, internalPathNoExt);
+    if (resolved is null)
+        return Fail($"Not found (neither .blp nor .tga): {internalPathNoExt}");
+    if (!resolved.EndsWith(".blp", StringComparison.OrdinalIgnoreCase))
+        return Fail($"Not a BLP: {resolved}");
+
+    var pngBytes = Extractor.Blp.BlpConverter.ConvertToPng(iface.ReadFile(resolved));
+    File.WriteAllBytes(outFile, pngBytes);
+
+    using var img = SixLabors.ImageSharp.Image.Load(outFile);
+    Console.WriteLine($"{resolved}: {img.Width}x{img.Height} -> {outFile}");
+    return 0;
+}
+
 static int GrepListfile(string clientDir, string pattern)
 {
     var dataDir = Path.Combine(clientDir, "Data");
@@ -289,6 +317,80 @@ static int ResolveIcon(string clientDir, string build, int spellIconId)
 
     var resolved = IconFileResolver.Resolve(iface, icon.TextureFilename);
     Console.WriteLine($"SpellIcon {spellIconId}: TextureFilename=\"{icon.TextureFilename}\" resolved={resolved ?? "NOT FOUND (neither .blp nor .tga)"}");
+
+    return 0;
+}
+
+/// <summary>Crops the 9 vanilla class icons out of the character-creation-screen sprite
+/// sheet (Interface\Glues\CharacterCreate\UI-CharacterCreate-Classes.blp) and writes each
+/// into `classes.icon_path`. One-off, NOT part of extract-build: `classes` is a global
+/// table (not scoped by client_build_id - a class doesn't change between patches), so this
+/// only ever needs to run once against any single build that has the sprite (confirmed
+/// visually against 1.12.1.5875 - see gotchas.md). UV coordinates below are copied from
+/// CLASS_ICON_TCOORDS in the client's own Interface\GlueXML\CharacterCreate.lua, not
+/// guessed - verified the resulting 256x256 sprite crops cleanly into a 4-col grid (with a
+/// few px of anti-bleed trim on some edges, matching the slightly-off 0.49609375-style
+/// fractions) by decoding it and looking at it (dump-blp-png).</summary>
+static int ExtractClassIcons(string clientDir, string envFilePath, string storageIconsDir)
+{
+    var classIconTexCoords = new Dictionary<string, (float X0, float X1, float Y0, float Y1)>
+    {
+        ["warrior"] = (0f, 0.25f, 0f, 0.25f),
+        ["mage"] = (0.25f, 0.49609375f, 0f, 0.25f),
+        ["rogue"] = (0.49609375f, 0.7421875f, 0f, 0.25f),
+        ["druid"] = (0.7421875f, 0.98828125f, 0f, 0.25f),
+        ["hunter"] = (0f, 0.25f, 0.25f, 0.5f),
+        ["shaman"] = (0.25f, 0.49609375f, 0.25f, 0.5f),
+        ["priest"] = (0.49609375f, 0.7421875f, 0.25f, 0.5f),
+        ["warlock"] = (0.7421875f, 0.98828125f, 0.25f, 0.5f),
+        ["paladin"] = (0f, 0.25f, 0.5f, 0.75f),
+    };
+
+    var connectionString = EnvFileConnectionString.ReadMySqlConnectionString(envFilePath);
+    var dataDir = Path.Combine(clientDir, "Data");
+
+    using var iface = MpqArchive.Open(Path.Combine(dataDir, "interface.MPQ"));
+    PatchChain.ApplyAll(iface, dataDir);
+
+    const string spritePath = @"Interface\Glues\CharacterCreate\UI-CharacterCreate-Classes";
+    var resolved = IconFileResolver.Resolve(iface, spritePath);
+    if (resolved is null)
+        return Fail($"Sprite sheet not found: {spritePath}");
+
+    using var sprite = SixLabors.ImageSharp.Image.Load<SixLabors.ImageSharp.PixelFormats.Bgra32>(
+        Extractor.Blp.BlpConverter.ConvertToPng(iface.ReadFile(resolved)));
+
+    Directory.CreateDirectory(storageIconsDir);
+
+    using var connection = new MySqlConnection(connectionString);
+    connection.Open();
+
+    foreach (var (slug, coords) in classIconTexCoords)
+    {
+        var rect = new SixLabors.ImageSharp.Rectangle(
+            (int)Math.Round(coords.X0 * sprite.Width),
+            (int)Math.Round(coords.Y0 * sprite.Height),
+            (int)Math.Round((coords.X1 - coords.X0) * sprite.Width),
+            (int)Math.Round((coords.Y1 - coords.Y0) * sprite.Height));
+
+        using var cropped = sprite.Clone(ctx => ctx.Crop(rect));
+        using var output = new MemoryStream();
+        cropped.SaveAsPng(output);
+        var pngBytes = output.ToArray();
+        var hash = Convert.ToHexString(SHA256.HashData(pngBytes)).ToLowerInvariant();
+
+        var outPath = Path.Combine(storageIconsDir, $"{hash}.png");
+        if (!File.Exists(outPath))
+            File.WriteAllBytes(outPath, pngBytes);
+
+        using var cmd = connection.CreateCommand();
+        cmd.CommandText = "UPDATE classes SET icon_path = @icon WHERE slug = @slug";
+        cmd.Parameters.AddWithValue("@icon", hash);
+        cmd.Parameters.AddWithValue("@slug", slug);
+        var rows = cmd.ExecuteNonQuery();
+
+        Console.WriteLine($"{slug}: {rect} -> {hash}.png (rows updated: {rows})");
+    }
 
     return 0;
 }

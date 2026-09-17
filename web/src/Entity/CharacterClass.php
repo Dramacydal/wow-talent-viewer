@@ -29,6 +29,13 @@ class CharacterClass
     #[ORM\Column(length: 64)]
     private string $name;
 
+    /** PNG content hash (storage/icons/{iconPath}.png) — cropped from the
+     * character-creation-screen class icon sprite sheet (Interface\Glues\CharacterCreate\
+     * UI-CharacterCreate-Classes.blp), a one-off global extraction not tied to any build
+     * (classes.dbd doesn't carry per-class icon data in vanilla). Nullable until populated. */
+    #[ORM\Column(length: 64, nullable: true)]
+    private ?string $iconPath = null;
+
     public function getId(): int
     {
         return $this->id;
@@ -61,6 +68,18 @@ class CharacterClass
     public function setName(string $name): static
     {
         $this->name = $name;
+
+        return $this;
+    }
+
+    public function getIconPath(): ?string
+    {
+        return $this->iconPath;
+    }
+
+    public function setIconPath(?string $iconPath): static
+    {
+        $this->iconPath = $iconPath;
 
         return $this;
     }
