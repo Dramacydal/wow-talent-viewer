@@ -334,6 +334,11 @@ static int ResolveIcon(string clientDir, string build, int spellIconId)
 /// fractions) by decoding it and looking at it (dump-blp-png).</summary>
 static int ExtractClassIcons(string clientDir, string envFilePath, string storageIconsDir)
 {
+    // Own sibling folder, not mixed into storage/icons/ - these are class-selection-screen
+    // portraits, a different kind of asset from ability/talent icons and talent-tab
+    // backgrounds (which likewise get their own storage/backgrounds/, see BuildExtractor).
+    var classIconsDir = Path.Combine(Path.GetDirectoryName(storageIconsDir.TrimEnd('/', '\\')) ?? ".", "class-icons");
+
     var classIconTexCoords = new Dictionary<string, (float X0, float X1, float Y0, float Y1)>
     {
         ["warrior"] = (0f, 0.25f, 0f, 0.25f),
@@ -361,7 +366,7 @@ static int ExtractClassIcons(string clientDir, string envFilePath, string storag
     using var sprite = SixLabors.ImageSharp.Image.Load<SixLabors.ImageSharp.PixelFormats.Bgra32>(
         Extractor.Blp.BlpConverter.ConvertToPng(iface.ReadFile(resolved)));
 
-    Directory.CreateDirectory(storageIconsDir);
+    Directory.CreateDirectory(classIconsDir);
 
     using var connection = new MySqlConnection(connectionString);
     connection.Open();
@@ -380,7 +385,7 @@ static int ExtractClassIcons(string clientDir, string envFilePath, string storag
         var pngBytes = output.ToArray();
         var hash = Convert.ToHexString(SHA256.HashData(pngBytes)).ToLowerInvariant();
 
-        var outPath = Path.Combine(storageIconsDir, $"{hash}.png");
+        var outPath = Path.Combine(classIconsDir, $"{hash}.png");
         if (!File.Exists(outPath))
             File.WriteAllBytes(outPath, pngBytes);
 

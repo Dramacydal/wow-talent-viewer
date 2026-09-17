@@ -57,7 +57,12 @@ class TalentTreeController extends AbstractController
                     'id' => $tab->getId(),
                     'name' => $tab->getName(),
                     'iconUrl' => self::iconUrl($tab->getIconPath()),
-                    'backgroundFile' => $tab->getBackgroundFile(),
+                    'background' => [
+                        'topLeft' => self::backgroundUrl($tab->getBackgroundTopLeftPath()),
+                        'topRight' => self::backgroundUrl($tab->getBackgroundTopRightPath()),
+                        'bottomLeft' => self::backgroundUrl($tab->getBackgroundBottomLeftPath()),
+                        'bottomRight' => self::backgroundUrl($tab->getBackgroundBottomRightPath()),
+                    ],
                     'talents' => array_map(
                         fn (Talent $talent) => [
                             'id' => $talent->getId(),
@@ -86,5 +91,10 @@ class TalentTreeController extends AbstractController
     private static function iconUrl(?string $iconPath): ?string
     {
         return $iconPath === null ? null : "/icons/$iconPath.png";
+    }
+
+    private static function backgroundUrl(?string $iconPath): ?string
+    {
+        return $iconPath === null ? null : "/backgrounds/$iconPath.png";
     }
 }

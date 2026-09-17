@@ -157,6 +157,21 @@ createApp({
                 gridRow: talent.tier + 1,
             };
         },
+        // The 4 quadrant textures the client itself composites a tab's panel background
+        // from (see architecture.md/gotchas.md) - stacked as 4 independent CSS background
+        // layers rather than pre-glued server-side, positioned flush to their own corner so
+        // they tile together exactly like the real client's layout, at whatever size each
+        // was actually extracted at. Missing quadrants (older/incomplete builds) just leave
+        // that corner as 'none' - the dark ::before vignette still covers the rest.
+        tabBackgroundStyle(tab) {
+            const bg = tab.background || {};
+            const corners = [bg.topLeft, bg.topRight, bg.bottomLeft, bg.bottomRight];
+            if (corners.every((url) => !url)) return {};
+            return {
+                backgroundImage: corners.map((url) => (url ? `url(${url})` : 'none')).join(', '),
+                backgroundPosition: 'top left, top right, bottom left, bottom right',
+            };
+        },
         gridStyle(tab) {
             const maxTier = Math.max(0, ...tab.talents.map((t) => t.tier));
             return {
@@ -278,7 +293,7 @@ createApp({
                     </div>
                 </header>
                 <div class="tt-tabs">
-                    <section class="tt-tab" v-for="tab in tree.tabs" :key="tab.id">
+                    <section class="tt-tab" v-for="tab in tree.tabs" :key="tab.id" :style="tabBackgroundStyle(tab)">
                         <h2 class="tt-tab-title">
                             <img v-if="tab.iconUrl" :src="tab.iconUrl" width="24" height="24" alt="">
                             {{ tab.name }}

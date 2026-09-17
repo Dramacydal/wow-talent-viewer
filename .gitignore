@@ -11,6 +11,8 @@ web/.env.local.php
 web/.env.*.local
 web/public/bundles/
 web/public/icons
+web/public/class-icons
+web/public/backgrounds
 
 # Node (Vue build tooling inside web/)
 web/node_modules/
@@ -18,6 +20,10 @@ web/node_modules/
 # Generated icon assets (produced by extractor, not source)
 storage/icons/*
 !storage/icons/.gitkeep
+storage/class-icons/*
+!storage/class-icons/.gitkeep
+storage/backgrounds/*
+!storage/backgrounds/.gitkeep
 
 # Scratch/temp downloads (project-local, not /tmp)
 .tmp/

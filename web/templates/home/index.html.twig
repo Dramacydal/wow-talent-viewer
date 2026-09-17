@@ -22,7 +22,7 @@
                    href="{{ path('talent_tree_page', { buildLabel: selectedBuild.label, classSlug: class.slug }) }}"
                    title="{{ class.name }}">
                     {% if class.iconPath %}
-                        <img class="class-icon-img" src="/icons/{{ class.iconPath }}.png" alt="{{ class.name }}">
+                        <img class="class-icon-img" src="/class-icons/{{ class.iconPath }}.png" alt="{{ class.name }}">
                     {% else %}
                         <span class="class-icon-label">{{ classAbbreviations[class.slug] ?? class.name|slice(0, 3)|upper }}</span>
                     {% endif %}

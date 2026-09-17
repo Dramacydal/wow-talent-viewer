@@ -51,6 +51,23 @@ class TalentTab
     #[ORM\Column(length: 64, nullable: true)]
     private ?string $backgroundFile = null;
 
+    /** PNG content hashes for the 4 quadrant textures the client itself composites this
+     * panel from (Interface\TalentFrame\{BackgroundFile}-TopLeft/TopRight/BottomLeft/
+     * BottomRight.blp) - kept as 4 separate images, not glued into one, so the frontend can
+     * position them exactly like the real client does. Independently nullable: resolution
+     * can fail per-quadrant. */
+    #[ORM\Column(length: 64, nullable: true)]
+    private ?string $backgroundTopLeftPath = null;
+
+    #[ORM\Column(length: 64, nullable: true)]
+    private ?string $backgroundTopRightPath = null;
+
+    #[ORM\Column(length: 64, nullable: true)]
+    private ?string $backgroundBottomLeftPath = null;
+
+    #[ORM\Column(length: 64, nullable: true)]
+    private ?string $backgroundBottomRightPath = null;
+
     public function getId(): ?int
     {
         return $this->id;
@@ -136,6 +153,54 @@ class TalentTab
     public function setBackgroundFile(?string $backgroundFile): static
     {
         $this->backgroundFile = $backgroundFile;
+
+        return $this;
+    }
+
+    public function getBackgroundTopLeftPath(): ?string
+    {
+        return $this->backgroundTopLeftPath;
+    }
+
+    public function setBackgroundTopLeftPath(?string $path): static
+    {
+        $this->backgroundTopLeftPath = $path;
+
+        return $this;
+    }
+
+    public function getBackgroundTopRightPath(): ?string
+    {
+        return $this->backgroundTopRightPath;
+    }
+
+    public function setBackgroundTopRightPath(?string $path): static
+    {
+        $this->backgroundTopRightPath = $path;
+
+        return $this;
+    }
+
+    public function getBackgroundBottomLeftPath(): ?string
+    {
+        return $this->backgroundBottomLeftPath;
+    }
+
+    public function setBackgroundBottomLeftPath(?string $path): static
+    {
+        $this->backgroundBottomLeftPath = $path;
+
+        return $this;
+    }
+
+    public function getBackgroundBottomRightPath(): ?string
+    {
+        return $this->backgroundBottomRightPath;
+    }
+
+    public function setBackgroundBottomRightPath(?string $path): static
+    {
+        $this->backgroundBottomRightPath = $path;
 
         return $this;
     }

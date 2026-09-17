@@ -55,6 +55,12 @@ public sealed class BuildExtractor(
     private readonly DbcClient dbcClient = new(dbcArchive, dbdDefinitionsDir);
     private SpellDescriptionFormatter descriptionFormatter = null!;
     private IconPipeline iconPipeline = null!;
+    // Talent-tab background quadrants are full panel-sized textures (256x256 etc.), not
+    // small square ability icons — kept in their own sibling directory (storage/backgrounds/
+    // next to storage/icons/) rather than mixed into the icons pool, even though both share
+    // the same icon_sources dedup table (its dedup key is the MPQ path, which can't collide
+    // between the two kinds of asset anyway).
+    private IconPipeline backgroundPipeline = null!;
     private MySqlTransaction? transaction;
 
     public ExtractionSummary Run()
@@ -62,7 +68,10 @@ public sealed class BuildExtractor(
         // Constructed here, not as a field initializer: the closure needs `transaction`,
         // which only exists once Run() starts (field initializers can't forward-reference
         // other instance fields in C#).
-        iconPipeline = new IconPipeline(interfaceArchive, new MySqlIconSourceStore(connection, () => transaction), storageIconsDir);
+        var iconSourceStore = new MySqlIconSourceStore(connection, () => transaction);
+        iconPipeline = new IconPipeline(interfaceArchive, iconSourceStore, storageIconsDir);
+        var storageBackgroundsDir = Path.Combine(Path.GetDirectoryName(storageIconsDir.TrimEnd('/', '\\')) ?? ".", "backgrounds");
+        backgroundPipeline = new IconPipeline(interfaceArchive, iconSourceStore, storageBackgroundsDir);
         descriptionFormatter = new SpellDescriptionFormatter(dbcClient, build);
 
         // Commit per phase (not one giant transaction for the whole run): a single
@@ -209,16 +218,23 @@ public sealed class BuildExtractor(
             }
 
             var iconPath = ResolveIcon(tab.SpellIconId);
-            rows.Add([clientBuildId, classId.Value, tab.Id, tab.Name, iconPath, tab.OrderIndex, tab.BackgroundFile]);
+            var bgTopLeft = ResolveBackgroundQuadrant(tab.BackgroundFile, "TopLeft");
+            var bgTopRight = ResolveBackgroundQuadrant(tab.BackgroundFile, "TopRight");
+            var bgBottomLeft = ResolveBackgroundQuadrant(tab.BackgroundFile, "BottomLeft");
+            var bgBottomRight = ResolveBackgroundQuadrant(tab.BackgroundFile, "BottomRight");
+            rows.Add([clientBuildId, classId.Value, tab.Id, tab.Name, iconPath, tab.OrderIndex, tab.BackgroundFile,
+                      bgTopLeft, bgTopRight, bgBottomLeft, bgBottomRight]);
         }
 
         if (rows.Count > 0)
         {
             using var cmd = BuildBatchInsert(
                 "talent_tabs",
-                ["client_build_id", "character_class_id", "source_tab_id", "name", "icon_path", "order_index", "background_file"],
+                ["client_build_id", "character_class_id", "source_tab_id", "name", "icon_path", "order_index", "background_file",
+                 "background_top_left_path", "background_top_right_path", "background_bottom_left_path", "background_bottom_right_path"],
                 rows,
-                updateColumns: ["character_class_id", "name", "icon_path", "order_index", "background_file"]);
+                updateColumns: ["character_class_id", "name", "icon_path", "order_index", "background_file",
+                                "background_top_left_path", "background_top_right_path", "background_bottom_left_path", "background_bottom_right_path"]);
             cmd.ExecuteNonQuery();
         }
 
@@ -363,6 +379,20 @@ public sealed class BuildExtractor(
         if (icon is null) return null;
 
         var result = iconPipeline.Extract(icon.TextureFilename);
+        return result.IconPath;
+    }
+
+    /// <summary>The 4 quadrant textures the client itself composites a talent tab's
+    /// background panel from (see .claude-docs/architecture.md). Kept as 4 separate images,
+    /// not glued into one. Reuses the same IconPipeline as ability icons - already handles
+    /// "file doesn't exist in this build" gracefully (returns null, doesn't throw), which
+    /// matters here: BackgroundFile itself is missing before 0.8.0.3734, and even where it's
+    /// present a specific quadrant could still be absent in an early/incomplete build.</summary>
+    private string? ResolveBackgroundQuadrant(string? backgroundFile, string quadrant)
+    {
+        if (string.IsNullOrEmpty(backgroundFile)) return null;
+
+        var result = backgroundPipeline.Extract($@"Interface\TalentFrame\{backgroundFile}-{quadrant}");
         return result.IconPath;
     }
 
