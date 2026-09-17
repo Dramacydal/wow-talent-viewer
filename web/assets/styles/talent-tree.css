@@ -239,8 +239,19 @@ body {
     margin-bottom: 4px;
 }
 
-.tt-tooltip-req {
-    color: #b23a3a;
+.tt-tooltip-desc {
+    color: #ffd35c;
+}
+
+.tt-tooltip-next-label {
+    color: var(--tt-text);
     margin-top: 6px;
+    padding-top: 6px;
+    border-top: 1px solid var(--tt-panel-border);
+}
+
+.tt-tooltip-actions {
+    color: #3fd13f;
+    margin-top: 8px;
     font-size: 11px;
 }

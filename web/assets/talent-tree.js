@@ -28,6 +28,7 @@ createApp({
             tree: null,
             error: null,
             spent: {},
+            hoveredTab: null,
             hoveredTalent: null,
             tooltipPos: { x: 0, y: 0 },
         };
@@ -39,20 +40,24 @@ createApp({
         // A computed (not a value snapshotted in the mouseenter/mousemove handler) so it
         // reactively tracks `spent` - clicking a cell without moving the mouse afterwards
         // must still update the still-open tooltip for that same cell.
+        //
+        // Matches the wowhead-calculator convention: nothing spent yet -> show rank 1's
+        // text only (a preview of what learning it gives); some ranks spent -> show the
+        // CURRENTLY learned rank's text plus a separate "next rank" preview (unless maxed,
+        // where there's nothing left to preview).
         tooltip() {
             if (!this.hoveredTalent) return null;
             const talent = this.hoveredTalent;
             const spent = this.spent[talent.id] || 0;
-            // Description previews the NEXT rank to learn while unspent/not maxed (common
-            // calculator convention), but the header shows the REAL spent count (0 when
-            // nothing is spent) - showing "1/5" for an untouched talent would read as
-            // "already has 1 point in it", which is wrong.
-            const previewRank = talent.ranks[Math.min(spent, talent.maxRank - 1)];
+            const mainRank = talent.ranks[spent === 0 ? 0 : spent - 1];
+            const nextRank = (spent > 0 && spent < talent.maxRank) ? talent.ranks[spent] : null;
             return {
-                name: previewRank.name,
+                name: mainRank.name,
                 spent,
                 maxRank: talent.maxRank,
-                description: previewRank.description,
+                description: mainRank.description,
+                nextDescription: nextRank?.description ?? null,
+                canLearn: this.canSpend(this.hoveredTab, talent),
                 x: this.tooltipPos.x,
                 y: this.tooltipPos.y,
             };
@@ -108,6 +113,15 @@ createApp({
             if (!this.canSpend(tab, talent)) return;
             this.spent[talent.id]++;
         },
+        learnAll(tab, talent) {
+            while (this.canSpend(tab, talent)) {
+                this.spent[talent.id]++;
+            }
+        },
+        onCellClick(tab, talent, event) {
+            if (event.shiftKey) this.learnAll(tab, talent);
+            else this.increment(tab, talent);
+        },
         decrement(tab, talent) {
             if ((this.spent[talent.id] || 0) <= 0) return;
             this.spent[talent.id]--;
@@ -159,11 +173,13 @@ createApp({
             }
             return lines;
         },
-        showTooltip(talent, event) {
+        showTooltip(tab, talent, event) {
+            this.hoveredTab = tab;
             this.hoveredTalent = talent;
             this.tooltipPos = { x: event.clientX + 16, y: event.clientY + 16 };
         },
         hideTooltip() {
+            this.hoveredTab = null;
             this.hoveredTalent = null;
         },
         loadFromUrl() {
@@ -225,10 +241,10 @@ createApp({
                             </svg>
                             <div v-for="talent in tab.talents" :key="talent.id"
                                  class="tt-cell" :class="cellClasses(tab, talent)" :style="cellStyle(talent)"
-                                 @click="increment(tab, talent)"
+                                 @click="onCellClick(tab, talent, $event)"
                                  @contextmenu.prevent="decrement(tab, talent)"
-                                 @mouseenter="showTooltip(talent, $event)"
-                                 @mousemove="showTooltip(talent, $event)"
+                                 @mouseenter="showTooltip(tab, talent, $event)"
+                                 @mousemove="showTooltip(tab, talent, $event)"
                                  @mouseleave="hideTooltip">
                                 <img v-if="talent.ranks[0].iconUrl" :src="talent.ranks[0].iconUrl" alt="">
                                 <span class="tt-cell-rank">{{ spent[talent.id] || 0 }}/{{ talent.maxRank }}</span>
@@ -240,7 +256,14 @@ createApp({
             <p v-else>Loading...</p>
             <div v-if="tooltip" class="tt-tooltip" :style="{ left: tooltip.x + 'px', top: tooltip.y + 'px' }">
                 <div class="tt-tooltip-title">{{ tooltip.name }} ({{ tooltip.spent }}/{{ tooltip.maxRank }})</div>
-                <div>{{ tooltip.description }}</div>
+                <div class="tt-tooltip-desc">{{ tooltip.description }}</div>
+                <template v-if="tooltip.nextDescription">
+                    <div class="tt-tooltip-next-label">Next rank:</div>
+                    <div class="tt-tooltip-desc">{{ tooltip.nextDescription }}</div>
+                </template>
+                <div v-if="tooltip.canLearn" class="tt-tooltip-actions">
+                    Click to learn<template v-if="tooltip.maxRank > 1"> &middot; Shift-click to learn all ranks</template>
+                </div>
             </div>
         </div>
     `,
