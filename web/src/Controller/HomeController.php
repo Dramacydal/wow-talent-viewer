@@ -33,6 +33,8 @@ class HomeController extends AbstractController
         return $this->render('tree/show.html.twig', [
             'build' => $build,
             'class' => $class,
+            'allBuilds' => $builds->findAllOrderedByBuildNumber(),
+            'allClasses' => $classes->findAllOrderedById(),
         ]);
     }
 }

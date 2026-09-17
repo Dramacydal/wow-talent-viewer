@@ -5,5 +5,28 @@
 {% block importmap %}{{ importmap('talent-tree') }}{% endblock %}
 
 {% block body %}
+    <div class="tt-picker">
+        <a class="tt-picker-home" href="{{ path('home') }}">&larr; Builds</a>
+        <form id="tt-picker-form">
+            <select name="build">
+                {% for b in allBuilds %}
+                    <option value="{{ b.label }}" {{ b.label == build.label ? 'selected' : '' }}>{{ b.label }}</option>
+                {% endfor %}
+            </select>
+            <select name="class">
+                {% for c in allClasses %}
+                    <option value="{{ c.slug }}" {{ c.slug == class.slug ? 'selected' : '' }}>{{ c.name }}</option>
+                {% endfor %}
+            </select>
+        </form>
+    </div>
     <div id="talent-tree-app" data-tree-url="{{ path('api_talent_tree', { buildLabel: build.label, classSlug: class.slug }) }}"></div>
+    <script>
+        const ttForm = document.getElementById('tt-picker-form');
+        ttForm.addEventListener('change', () => {
+            const build = ttForm.build.value;
+            const cls = ttForm.class.value;
+            window.location.href = `/tree/${encodeURIComponent(build)}/${encodeURIComponent(cls)}`;
+        });
+    </script>
 {% endblock %}
