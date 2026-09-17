@@ -183,11 +183,15 @@ createApp({
                     // pixels, or they visually read as one line that forks partway down.
                     // Going right first, at the source's own y, means the two paths only
                     // ever share their single common starting POINT, never a segment.
+                    // The arrowhead should stop at the target ICON's edge, not travel all
+                    // the way to its center (which the polyline math otherwise uses
+                    // throughout, for correct bend geometry) - pull back only the final
+                    // endpoint by half a cell, opposite the direction of travel.
                     const points = a.x === b.x
-                        ? `${a.x},${a.y} ${b.x},${b.y}`
+                        ? `${a.x},${a.y} ${b.x},${b.y - CELL / 2}`
                         : a.y === b.y
-                            ? `${a.x},${a.y} ${b.x},${b.y}`
-                            : `${a.x},${a.y} ${b.x},${a.y} ${b.x},${b.y}`;
+                            ? `${a.x},${a.y} ${b.x - Math.sign(b.x - a.x) * CELL / 2},${a.y}`
+                            : `${a.x},${a.y} ${b.x},${a.y} ${b.x},${b.y - CELL / 2}`;
                     lines.push({
                         key: `${prereq.requiresTalentId}-${talent.id}`,
                         points,
@@ -239,10 +243,10 @@ createApp({
         <div class="tt-page">
             <svg width="0" height="0" style="position: absolute;">
                 <defs>
-                    <marker id="tt-arrow-gray" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                    <marker id="tt-arrow-gray" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto">
                         <path d="M0,0 L10,5 L0,10 z" fill="#6b6b6b" />
                     </marker>
-                    <marker id="tt-arrow-gold" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                    <marker id="tt-arrow-gold" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto">
                         <path d="M0,0 L10,5 L0,10 z" fill="#c9a227" />
                     </marker>
                 </defs>
