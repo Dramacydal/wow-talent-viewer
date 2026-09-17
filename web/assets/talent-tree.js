@@ -96,6 +96,16 @@ createApp({
         canSpend(tab, talent) {
             return (this.spent[talent.id] || 0) < talent.maxRank && this.isUnlocked(tab, talent) && this.prereqsMet(talent);
         },
+        // Whether a talent's gate is fully open (tier unlocked AND *every* one of its
+        // prerequisites met - not just maxRank), independent of whether it's already
+        // maxed. Used to color prerequisite connector lines: a talent can have more than
+        // one prerequisite (see gotchas.md, 0.7.0.3694), and a single satisfied edge must
+        // NOT turn gold on its own while a sibling prerequisite is still unmet - both (or
+        // all) of a target's incoming lines share this same one true/false state, they
+        // don't light up independently per edge.
+        targetGateOpen(tab, talent) {
+            return this.isUnlocked(tab, talent) && this.prereqsMet(talent);
+        },
         // Every already-spent talent in this tab must stay valid (tier unlocked, its own
         // prerequisites still met) after the simulated change - otherwise the change is
         // rejected. Covers both "removes a rank a dependent needs" and "drops the tab's
@@ -181,7 +191,7 @@ createApp({
                     lines.push({
                         key: `${prereq.requiresTalentId}-${talent.id}`,
                         points,
-                        active: (this.spent[prereq.requiresTalentId] || 0) >= prereq.requiresRank,
+                        active: this.targetGateOpen(tab, talent),
                     });
                 }
             }
@@ -227,6 +237,16 @@ createApp({
     },
     template: `
         <div class="tt-page">
+            <svg width="0" height="0" style="position: absolute;">
+                <defs>
+                    <marker id="tt-arrow-gray" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                        <path d="M0,0 L10,5 L0,10 z" fill="#6b6b6b" />
+                    </marker>
+                    <marker id="tt-arrow-gold" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                        <path d="M0,0 L10,5 L0,10 z" fill="#c9a227" />
+                    </marker>
+                </defs>
+            </svg>
             <p v-if="error">Failed to load talent tree: {{ error }}</p>
             <template v-else-if="tree">
                 <header class="tt-header">
@@ -251,6 +271,7 @@ createApp({
                             <svg class="tt-connectors">
                                 <polyline v-for="c in connectors(tab)" :key="c.key"
                                           :points="c.points"
+                                          :marker-end="c.active ? 'url(#tt-arrow-gold)' : 'url(#tt-arrow-gray)'"
                                           :class="{ 'tt-connector-active': c.active }" />
                             </svg>
                             <div v-for="talent in tab.talents" :key="talent.id"

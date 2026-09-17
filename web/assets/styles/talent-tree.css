@@ -161,8 +161,8 @@ body {
 
 .tt-connectors polyline {
     fill: none;
-    stroke: #5a4626;
-    stroke-width: 2;
+    stroke: #6b6b6b;
+    stroke-width: 3;
 }
 
 .tt-connectors polyline.tt-connector-active {
