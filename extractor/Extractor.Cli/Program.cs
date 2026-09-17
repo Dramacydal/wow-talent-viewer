@@ -12,6 +12,8 @@ return args[0] switch
 {
     "spike-dbc" => SpikeDbc(args[1]),
     "spike-patch-verify" => SpikePatchVerify(args[1], args[2]),
+    "grep-listfile" => GrepListfile(args[1], args[2]),
+    "dump-file" => DumpFile(args[1], args[2], args[3]),
     _ => Fail($"Unknown command: {args[0]}")
 };
 
@@ -22,6 +24,39 @@ static int Fail(string message)
 }
 
 static string Sha256Hex(byte[] data) => Convert.ToHexString(SHA256.HashData(data)).ToLowerInvariant();
+
+// Diagnostic: dump the MPQ's internal "(listfile)" pseudo-file (if present) and grep it,
+// so we can find out what a DBC file was actually called before assuming it doesn't exist.
+static int GrepListfile(string clientDir, string pattern)
+{
+    var dataDir = Path.Combine(clientDir, "Data");
+    var archives = new[] { "base.MPQ", "dbc.MPQ", "interface.MPQ", "misc.MPQ", "patch.MPQ", "patch-2.MPQ" };
+
+    foreach (var name in archives)
+    {
+        var path = Path.Combine(dataDir, name);
+        if (!File.Exists(path)) continue;
+
+        using var archive = MpqArchive.Open(path);
+        if (!archive.HasFile("(listfile)"))
+        {
+            Console.WriteLine($"[{name}] no internal (listfile)");
+            continue;
+        }
+
+        var bytes = archive.ReadFile("(listfile)");
+        var text = System.Text.Encoding.ASCII.GetString(bytes);
+        var matches = text.Split('\n', StringSplitOptions.RemoveEmptyEntries)
+            .Where(l => l.Contains(pattern, StringComparison.OrdinalIgnoreCase))
+            .ToList();
+
+        Console.WriteLine($"[{name}] (listfile) has {text.Split('\n').Length} entries, {matches.Count} match '{pattern}':");
+        foreach (var m in matches)
+            Console.WriteLine($"  {m.Trim()}");
+    }
+
+    return 0;
+}
 
 static int SpikeDbc(string clientDir)
 {
@@ -56,6 +91,17 @@ static int SpikeDbc(string clientDir)
     Console.WriteLine($"magic={magic} recordCount={recordCount} fieldCount={fieldCount} recordSize={recordSize} stringBlockSize={stringBlockSize}");
     Console.WriteLine($"expected total size = 20 (header) + {recordCount * recordSize} (records) + {stringBlockSize} (strings) = {20 + recordCount * recordSize + stringBlockSize}, actual = {bytes.Length}");
 
+    return 0;
+}
+
+// Diagnostic: dump a text file straight from a named MPQ archive to stdout (no patch chain).
+static int DumpFile(string clientDir, string archiveName, string internalPath)
+{
+    using var archive = MpqArchive.Open(Path.Combine(clientDir, "Data", archiveName));
+    if (!archive.HasFile(internalPath))
+        return Fail($"'{internalPath}' not found in {archiveName}");
+
+    Console.WriteLine(System.Text.Encoding.ASCII.GetString(archive.ReadFile(internalPath)));
     return 0;
 }
 
