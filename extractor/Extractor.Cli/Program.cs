@@ -31,6 +31,7 @@ return args[0] switch
     "raw-talent-record" => RawTalentRecord(args[1], int.Parse(args[2])),
     "raw-talent-by-id" => RawTalentById(args[1], int.Parse(args[2])),
     "talents-in-tab" => TalentsInTab(args[1], args[2], int.Parse(args[3])),
+    "talent-prereqs" => TalentPrereqs(args[1], args[2], int.Parse(args[3])),
     "spike-chrclasses" => SpikeChrClasses(args[1], args[2]),
     "spike-format-description" => SpikeFormatDescription(args[1], args[2], int.Parse(args[3])),
     "resolve-icon" => ResolveIcon(args[1], args[2], int.Parse(args[3])),
@@ -489,6 +490,28 @@ static int SpikeChrClasses(string clientDir, string build)
     {
         Console.WriteLine($"  #{c.Id} playerClass={c.PlayerClass} classMaskFromId={1 << (c.Id - 1)} " +
                            $"name=\"{c.Name}\" petToken=\"{c.PetNameToken}\" filename={c.Filename ?? "n/a"}");
+    }
+
+    return 0;
+}
+
+static int TalentPrereqs(string clientDir, string build, int talentId)
+{
+    using var archive = OpenPatchedDbc(clientDir);
+    var client = MakeDbcClient(archive);
+
+    var talents = client.ReadTalents(build);
+    var talent = talents.FirstOrDefault(t => t.Id == talentId);
+    if (talent is null)
+        return Fail($"Talent {talentId} not found");
+
+    Console.WriteLine($"Talent #{talent.Id} tabId={talent.TabId} tier={talent.Tier} col={talent.ColumnIndex} flags={talent.Flags}");
+    for (var i = 0; i < talent.PrereqTalent.Length; i++)
+    {
+        if (talent.PrereqTalent[i] == 0) continue;
+        var prereq = talents.FirstOrDefault(t => t.Id == talent.PrereqTalent[i]);
+        var prereqSpell = prereq is null ? null : client.GetSpell(build, prereq.SpellRanks.First(id => id != 0));
+        Console.WriteLine($"  PrereqTalent[{i}]={talent.PrereqTalent[i]} (\"{prereqSpell?.Name ?? "?"}\", tabId={prereq?.TabId}) PrereqRank[{i}]={talent.PrereqRank[i]}");
     }
 
     return 0;
