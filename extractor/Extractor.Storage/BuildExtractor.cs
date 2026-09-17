@@ -53,6 +53,7 @@ public sealed class BuildExtractor(
     private static readonly HashSet<int> KnownClassIds = [1, 2, 3, 4, 5, 7, 8, 9, 11];
 
     private readonly DbcClient dbcClient = new(dbcArchive, dbdDefinitionsDir);
+    private SpellDescriptionFormatter descriptionFormatter = null!;
     private IconPipeline iconPipeline = null!;
     private MySqlTransaction? transaction;
 
@@ -62,6 +63,7 @@ public sealed class BuildExtractor(
         // which only exists once Run() starts (field initializers can't forward-reference
         // other instance fields in C#).
         iconPipeline = new IconPipeline(interfaceArchive, new MySqlIconSourceStore(connection, () => transaction), storageIconsDir);
+        descriptionFormatter = new SpellDescriptionFormatter(dbcClient, build);
 
         // Commit per phase (not one giant transaction for the whole run): a single
         // transaction makes every row invisible to any other connection — including the
@@ -296,7 +298,8 @@ public sealed class BuildExtractor(
                 }
 
                 var iconPath = ResolveIcon(spell.SpellIconId);
-                rows.Add([ourTalentId, i + 1, spellId, spell.Name, spell.Description, iconPath]);
+                var description = descriptionFormatter.Format(spell);
+                rows.Add([ourTalentId, i + 1, spellId, spell.Name, description, iconPath]);
             }
         }
 

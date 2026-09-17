@@ -27,6 +27,7 @@ return args[0] switch
     "raw-talent-by-id" => RawTalentById(args[1], int.Parse(args[2])),
     "talents-in-tab" => TalentsInTab(args[1], args[2], int.Parse(args[3])),
     "spike-chrclasses" => SpikeChrClasses(args[1], args[2]),
+    "spike-format-description" => SpikeFormatDescription(args[1], args[2], int.Parse(args[3])),
     "resolve-icon" => ResolveIcon(args[1], args[2], int.Parse(args[3])),
     "extract-icon" => ExtractIcon(args[1], args[2], int.Parse(args[3]), args[4], args[5]),
     "extract-build" => ExtractBuild(args[1], args[2], args[3], args[4]),
@@ -295,6 +296,21 @@ static int ExtractBuild(string clientDir, string build, string envFilePath, stri
                        $"ranks={summary.RanksUpserted}, " +
                        $"prereqs={summary.PrerequisitesUpserted} ({summary.PrerequisitesSkippedOrphaned} skipped)");
 
+    return 0;
+}
+
+static int SpikeFormatDescription(string clientDir, string build, int spellId)
+{
+    using var archive = OpenPatchedDbc(clientDir);
+    var client = MakeDbcClient(archive);
+    var formatter = new SpellDescriptionFormatter(client, build);
+
+    var spell = client.GetSpell(build, spellId);
+    if (spell is null)
+        return Fail($"Spell {spellId} not found");
+
+    Console.WriteLine($"raw:       {spell.Description}");
+    Console.WriteLine($"formatted: {formatter.Format(spell)}");
     return 0;
 }
 

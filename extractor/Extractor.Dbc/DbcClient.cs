@@ -141,12 +141,27 @@ public sealed class DbcClient
         if (!index.TryGetValue(id, out var row))
             return null;
 
+        var storage = Load("Spell", build, global::DBCD.Locale.EnUS);
+        var hasMaxTargetLevel = storage.AvailableColumns.Contains("MaxTargetLevel");
+        var hasChainTargets = storage.AvailableColumns.Contains("EffectChainTargets");
+
         return new SpellRecord(
             Id: id,
             Name: row.Field<string>("Name_lang"),
             NameSubtext: row.Field<string>("NameSubtext_lang"),
             Description: row.Field<string>("Description_lang"),
-            SpellIconId: row.Field<int>("SpellIconID"));
+            SpellIconId: row.Field<int>("SpellIconID"),
+            EffectBasePoints: ReadIntArray(row, "EffectBasePoints", 3),
+            EffectAmplitude: ReadFloatArray(row, "EffectAmplitude", 3),
+            EffectRadiusIndex: ReadIntArray(row, "EffectRadiusIndex", 3),
+            EffectMiscValue: ReadIntArray(row, "EffectMiscValue", 3),
+            EffectPointsPerCombo: ReadFloatArray(row, "EffectPointsPerCombo", 3),
+            DurationIndex: row.Field<int>("DurationIndex"),
+            ProcChance: row.Field<int>("ProcChance"),
+            ProcCharges: row.Field<int>("ProcCharges"),
+            CumulativeAura: row.Field<int>("CumulativeAura"),
+            MaxTargetLevel: hasMaxTargetLevel ? row.Field<int>("MaxTargetLevel") : null,
+            EffectChainTargets: hasChainTargets ? ReadIntArray(row, "EffectChainTargets", 3) : null);
     }
 
     public SpellIconRecord? GetSpellIcon(string build, int id)
@@ -158,11 +173,35 @@ public sealed class DbcClient
         return new SpellIconRecord(id, row.Field<string>("TextureFilename"));
     }
 
+    /// <summary>SpellDuration.dbc's base Duration in milliseconds, for a Spell's DurationIndex.
+    /// One unchanged layout for all of vanilla.</summary>
+    public int? GetSpellDurationMs(string build, int durationIndex)
+    {
+        var index = LoadIndexedById("SpellDuration", build);
+        return index.TryGetValue(durationIndex, out var row) ? row.Field<int>("Duration") : null;
+    }
+
+    /// <summary>SpellRadius.dbc's Radius in yards, for a Spell's EffectRadiusIndex.
+    /// One unchanged layout for all of vanilla.</summary>
+    public float? GetSpellRadiusYards(string build, int radiusIndex)
+    {
+        var index = LoadIndexedById("SpellRadius", build);
+        return index.TryGetValue(radiusIndex, out var row) ? row.Field<float>("Radius") : null;
+    }
+
     private static int[] ReadIntArray(DBCD.DBCDRow row, string fieldName, int count)
     {
         var result = new int[count];
         for (var i = 0; i < count; i++)
             result[i] = (int)row[fieldName, i];
+        return result;
+    }
+
+    private static float[] ReadFloatArray(DBCD.DBCDRow row, string fieldName, int count)
+    {
+        var result = new float[count];
+        for (var i = 0; i < count; i++)
+            result[i] = (float)row[fieldName, i];
         return result;
     }
 }
