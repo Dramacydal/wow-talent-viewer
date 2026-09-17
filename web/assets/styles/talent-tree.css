@@ -196,13 +196,15 @@ body {
     filter: grayscale(1) brightness(0.55);
 }
 
-/* Available to learn right now (tier unlocked, all prerequisites met, not yet maxed). */
+/* Available to learn right now (tier unlocked, all prerequisites met, not yet maxed).
+   No glow/blur - checked wowhead's actual CSS for this exact state and it's just a plain
+   1px semi-transparent border (rgba(64,191,64,.8)), nothing fancier. */
 .tt-cell.tt-available {
-    box-shadow: 0 0 0 2px #3fd13f, 0 0 6px 1px rgba(63, 209, 63, 0.6);
+    box-shadow: 0 0 0 1px rgba(64, 191, 64, 0.8);
 }
 
 .tt-cell.tt-maxed {
-    box-shadow: 0 0 0 2px var(--tt-gold), 0 0 6px 1px rgba(201, 162, 39, 0.7);
+    box-shadow: 0 0 0 1px rgba(255, 209, 0, 0.8);
 }
 
 .tt-cell-rank {
