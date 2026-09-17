@@ -17,6 +17,7 @@ return args[0] switch
     "dump-file" => DumpFile(args[1], args[2], args[3]),
     "spike-dbcd" => SpikeDbcd(args[1], args[2]),
     "spike-talenttab" => SpikeTalentTab(args[1], args[2]),
+    "classes-with-talents" => ClassesWithTalents(args[1], args[2]),
     _ => Fail($"Unknown command: {args[0]}")
 };
 
@@ -28,16 +29,30 @@ static int Fail(string message)
 
 static string Sha256Hex(byte[] data) => Convert.ToHexString(SHA256.HashData(data)).ToLowerInvariant();
 
+/// <summary>Opens dbc.MPQ and applies the client's full patch chain (however many patch-N.MPQ
+/// files actually exist — see PatchChain, this is not hardcoded to 2).</summary>
+static MpqArchive OpenPatchedDbc(string clientDir)
+{
+    var dataDir = Path.Combine(clientDir, "Data");
+    var archive = MpqArchive.Open(Path.Combine(dataDir, "dbc.MPQ"));
+    PatchChain.ApplyAll(archive, dataDir);
+    return archive;
+}
+
+static DbcClient MakeDbcClient(MpqArchive archive) =>
+    new(archive, Path.Combine(AppContext.BaseDirectory, "dbd-definitions"));
+
 // Diagnostic: dump the MPQ's internal "(listfile)" pseudo-file (if present) and grep it,
 // so we can find out what a DBC file was actually called before assuming it doesn't exist.
 static int GrepListfile(string clientDir, string pattern)
 {
     var dataDir = Path.Combine(clientDir, "Data");
-    var archives = new[] { "base.MPQ", "dbc.MPQ", "interface.MPQ", "misc.MPQ", "patch.MPQ", "patch-2.MPQ" };
+    var archiveNames = new List<string> { "base.MPQ", "dbc.MPQ", "interface.MPQ", "misc.MPQ" };
+    archiveNames.AddRange(PatchChain.DiscoverInOrder(dataDir).Select(Path.GetFileName)!);
 
-    foreach (var name in archives)
+    foreach (var name in archiveNames)
     {
-        var path = Path.Combine(dataDir, name);
+        var path = Path.Combine(dataDir, name!);
         if (!File.Exists(path)) continue;
 
         using var archive = MpqArchive.Open(path);
@@ -63,20 +78,7 @@ static int GrepListfile(string clientDir, string pattern)
 
 static int SpikeDbc(string clientDir)
 {
-    var dataDir = Path.Combine(clientDir, "Data");
-
-    using var archive = MpqArchive.Open(Path.Combine(dataDir, "dbc.MPQ"));
-    Console.WriteLine("Opened dbc.MPQ");
-
-    foreach (var patch in new[] { "patch.MPQ", "patch-2.MPQ" })
-    {
-        var patchPath = Path.Combine(dataDir, patch);
-        if (File.Exists(patchPath))
-        {
-            archive.ApplyPatch(patchPath);
-            Console.WriteLine($"Applied patch: {patch}");
-        }
-    }
+    using var archive = OpenPatchedDbc(clientDir);
 
     const string internalPath = @"DBFilesClient\Talent.dbc";
     if (!archive.HasFile(internalPath))
@@ -110,18 +112,8 @@ static int DumpFile(string clientDir, string archiveName, string internalPath)
 
 static int SpikeDbcd(string clientDir, string build)
 {
-    var dataDir = Path.Combine(clientDir, "Data");
-
-    using var archive = MpqArchive.Open(Path.Combine(dataDir, "dbc.MPQ"));
-    foreach (var patch in new[] { "patch.MPQ", "patch-2.MPQ" })
-    {
-        var patchPath = Path.Combine(dataDir, patch);
-        if (File.Exists(patchPath))
-            archive.ApplyPatch(patchPath);
-    }
-
-    var definitionsDir = Path.Combine(AppContext.BaseDirectory, "dbd-definitions");
-    var client = new DbcClient(archive, definitionsDir);
+    using var archive = OpenPatchedDbc(clientDir);
+    var client = MakeDbcClient(archive);
 
     var talents = client.ReadTalents(build);
     Console.WriteLine($"DBCD loaded {talents.Count} Talent rows for build {build}");
@@ -140,18 +132,8 @@ static int SpikeDbcd(string clientDir, string build)
 
 static int SpikeTalentTab(string clientDir, string build)
 {
-    var dataDir = Path.Combine(clientDir, "Data");
-
-    using var archive = MpqArchive.Open(Path.Combine(dataDir, "dbc.MPQ"));
-    foreach (var patch in new[] { "patch.MPQ", "patch-2.MPQ" })
-    {
-        var patchPath = Path.Combine(dataDir, patch);
-        if (File.Exists(patchPath))
-            archive.ApplyPatch(patchPath);
-    }
-
-    var definitionsDir = Path.Combine(AppContext.BaseDirectory, "dbd-definitions");
-    var client = new DbcClient(archive, definitionsDir);
+    using var archive = OpenPatchedDbc(clientDir);
+    var client = MakeDbcClient(archive);
 
     var tabs = client.ReadTalentTabs(build);
     Console.WriteLine($"DBCD loaded {tabs.Count} TalentTab rows for build {build}");
@@ -165,15 +147,40 @@ static int SpikeTalentTab(string clientDir, string build)
     return 0;
 }
 
+// Which classes actually have a TalentTab row yet, for one build — used to date when each
+// class's talent tree was introduced (they didn't all show up at once).
+static int ClassesWithTalents(string clientDir, string build)
+{
+    (int Mask, string Name)[] classMasks =
+    [
+        (1, "Warrior"), (2, "Paladin"), (4, "Hunter"), (8, "Rogue"), (16, "Priest"),
+        (64, "Shaman"), (128, "Mage"), (256, "Warlock"), (1024, "Druid"),
+    ];
+
+    using var archive = OpenPatchedDbc(clientDir);
+    var client = MakeDbcClient(archive);
+    var tabs = client.ReadTalentTabs(build);
+
+    var seenMasks = tabs.Select(t => t.ClassMask).Distinct().ToHashSet();
+    var present = classMasks.Where(c => seenMasks.Contains(c.Mask)).Select(c => c.Name);
+    var unknownMasks = seenMasks.Except(classMasks.Select(c => c.Mask));
+
+    Console.WriteLine($"{build}: {tabs.Count} tabs, classes=[{string.Join(",", present)}]" +
+                       (unknownMasks.Any() ? $" unknownMasks=[{string.Join(",", unknownMasks)}]" : ""));
+
+    return 0;
+}
+
 // Proves the patch chain is actually honored, not just "applied without error": reads the
-// same internal file from each MPQ layer standalone (dbc.MPQ, patch.MPQ, patch-2.MPQ on
-// their own) and compares hashes against a read through the real chained archive. The
+// same internal file from each MPQ layer standalone (dbc.MPQ + however many patch-N.MPQ
+// actually exist) and compares hashes against a read through the real chained archive. The
 // chained read must match whichever standalone layer last touched the file, and differ from
 // earlier layers that had different content for it.
 static int SpikePatchVerify(string clientDir, string internalPath)
 {
     var dataDir = Path.Combine(clientDir, "Data");
-    var layers = new[] { "dbc.MPQ", "patch.MPQ", "patch-2.MPQ" };
+    var layers = new List<string> { "dbc.MPQ" };
+    layers.AddRange(PatchChain.DiscoverInOrder(dataDir).Select(Path.GetFileName)!);
 
     Console.WriteLine($"Checking '{internalPath}' across layers: {string.Join(", ", layers)}");
     Console.WriteLine();
@@ -203,20 +210,13 @@ static int SpikePatchVerify(string clientDir, string internalPath)
 
     Console.WriteLine();
 
-    using var chained = MpqArchive.Open(Path.Combine(dataDir, "dbc.MPQ"));
-    foreach (var layer in layers.Skip(1))
-    {
-        var path = Path.Combine(dataDir, layer);
-        if (File.Exists(path))
-            chained.ApplyPatch(path);
-    }
-
+    using var chained = OpenPatchedDbc(clientDir);
     var chainedBytes = chained.ReadFile(internalPath);
     var chainedHash = Sha256Hex(chainedBytes);
     Console.WriteLine($"[chained dbc.MPQ+patches] {chainedBytes.Length} bytes, sha256={chainedHash}");
     Console.WriteLine();
 
-    var expectedLayer = layers.Reverse().FirstOrDefault(l => perLayer.ContainsKey(l));
+    var expectedLayer = Enumerable.Reverse(layers).FirstOrDefault(l => perLayer.ContainsKey(l));
     if (expectedLayer is null)
         return Fail("File was found in no layer at all — nothing to verify.");
 
