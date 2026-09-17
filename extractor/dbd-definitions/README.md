@@ -2,7 +2,7 @@
 
 Pinned copies of table definitions from [wowdev/WoWDBDefs](https://github.com/wowdev/WoWDBDefs), used by `Extractor.Dbc`'s `DbcClient` (via DBCD's `FilesystemDBDProvider`) instead of a live fetch — reproducible/offline builds, same reasoning as vendoring StormLib (see `.claude-docs/architecture.md`).
 
-Pinned to commit `2b8d984019efdc0161a2ab6e3beafb3f3f0ae8c3` (2026-09-16).
+Pinned to commit `2b8d984019efdc0161a2ab6e3beafb3f3f0ae8c3` (2026-09-16), with two local patches on top (upstream WoWDBDefs has real build-range gaps for two vanilla builds — see gotchas.md): `ChrClasses.dbd` and `Spell.dbd` each gained a `BUILD 1.0.1.3989` line, and `ChrClasses.dbd`'s `1.1.1.4062-1.9.4.5086` range was widened down to `1.1.0.4044-1.9.4.5086`.
 
 To update a file: re-download from
 `https://raw.githubusercontent.com/wowdev/WoWDBDefs/master/definitions/<Table>.dbd`

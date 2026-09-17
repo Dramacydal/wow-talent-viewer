@@ -15,6 +15,7 @@ if (args.Length < 1)
 return args[0] switch
 {
     "spike-dbc" => SpikeDbc(args[1]),
+    "raw-dbc-header" => RawDbcHeader(args[1], args[2]),
     "spike-patch-verify" => SpikePatchVerify(args[1], args[2]),
     "grep-listfile" => GrepListfile(args[1], args[2]),
     "dump-file" => DumpFile(args[1], args[2], args[3]),
@@ -109,6 +110,29 @@ static int SpikeDbc(string clientDir)
     Console.WriteLine($"magic={magic} recordCount={recordCount} fieldCount={fieldCount} recordSize={recordSize} stringBlockSize={stringBlockSize}");
     Console.WriteLine($"expected total size = 20 (header) + {recordCount * recordSize} (records) + {stringBlockSize} (strings) = {20 + recordCount * recordSize + stringBlockSize}, actual = {bytes.Length}");
 
+    return 0;
+}
+
+/// <summary>Prints a raw WDBC header for any table by name (e.g. "ChrClasses") - lets a
+/// build's actual recordSize settle which .dbd layout applies when a build falls in a gap
+/// between two BUILD ranges (recordSize = 4 bytes per fixed-width field, tells field count
+/// without needing DBCD/a schema at all).</summary>
+static int RawDbcHeader(string clientDir, string tableName)
+{
+    using var archive = OpenPatchedDbc(clientDir);
+
+    var internalPath = $@"DBFilesClient\{tableName}.dbc";
+    if (!archive.HasFile(internalPath))
+        return Fail($"File not found in archive chain: {internalPath}");
+
+    var bytes = archive.ReadFile(internalPath);
+    var magic = System.Text.Encoding.ASCII.GetString(bytes, 0, 4);
+    var recordCount = BitConverter.ToUInt32(bytes, 4);
+    var fieldCount = BitConverter.ToUInt32(bytes, 8);
+    var recordSize = BitConverter.ToUInt32(bytes, 12);
+    var stringBlockSize = BitConverter.ToUInt32(bytes, 16);
+
+    Console.WriteLine($"{tableName}.dbc: {bytes.Length} bytes, magic={magic} recordCount={recordCount} fieldCount={fieldCount} recordSize={recordSize} stringBlockSize={stringBlockSize}");
     return 0;
 }
 
