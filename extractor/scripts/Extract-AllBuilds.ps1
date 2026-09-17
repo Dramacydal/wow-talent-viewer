@@ -1,10 +1,10 @@
 <#
 .SYNOPSIS
   Runs extract-build for every WoW client under -ClientsRoot, logging each build's output
-  to its own file instead of the console — so results can be reviewed (by a human or by
+  to its own file instead of the console - so results can be reviewed (by a human or by
   Claude reading the same files off the shared E:\ drive) without pasting console output
   around. See .claude-docs/gotchas.md for why a couple of the earliest alpha clients are
-  skipped (no Talent.dbc at all — talents were still a trainer-based mechanic then).
+  skipped (no Talent.dbc at all - talents were still a trainer-based mechanic then).
 
 .EXAMPLE
   .\Extract-AllBuilds.ps1
@@ -24,7 +24,7 @@ $cliProj  = Join-Path $RepoRoot "extractor\Extractor.Cli"
 
 New-Item -ItemType Directory -Force -Path $logsDir | Out-Null
 
-# No Talent.dbc at all on these — talents were a trainer-NPC mechanic pre-0.7.0, nothing to
+# No Talent.dbc at all on these - talents were a trainer-NPC mechanic pre-0.7.0, nothing to
 # extract (see gotchas.md). Extending this list is safe if more such clients show up later.
 $excluded = @("0.5.3.3368", "0.5.5.3494")
 
@@ -62,7 +62,7 @@ Write-Host "`n=== Summary ==="
 $summary | Format-Table -AutoSize
 $failed = $summary | Where-Object { $_.ExitCode -ne 0 }
 if ($failed) {
-    Write-Host "$($failed.Count) build(s) failed — see their .log files above." -ForegroundColor Yellow
+    Write-Host "$($failed.Count) build(s) failed - see their .log files above." -ForegroundColor Yellow
 } else {
     Write-Host "All builds extracted successfully." -ForegroundColor Green
 }
