@@ -24,7 +24,9 @@ tags: [memory/repo, architecture]
 
 ## Структура репозитория
 - `extractor/` — C# solution (.NET 10): `Extractor.Cli`, `Extractor.Mpq` (P/Invoke над StormLib), `Extractor.Dbc` (DBCD + fallback WDBC-ридер), `Extractor.Blp` (BLPSharp)
-  - `extractor/native/win-x64/StormLib.dll` — precompiled StormLib v9.40 (MIT), скачан с официального [GitHub Release](https://github.com/ladislav-zezula/StormLib/releases/tag/v9.40), не собирался из исходников. Лицензия — `extractor/native/StormLib-LICENSE.txt`. Только x64/Release/Unicode/Dynamic вариант; при необходимости x86 — переизвлечь из того же `stormlib_dll.zip` релиза.
+  - `extractor/native/win-x64/StormLib.dll` — precompiled StormLib v9.40 (MIT), официальный релиз **`stormlib_v9.40_amd64_RAD.zip`** (Release/Ansi/Dynamic) — сознательно не универсальный `stormlib_dll.zip`-бандл (у него неопределённая Ansi/Unicode сборка, не совпадает по хэшу ни с RAD, ни с RUD). Ansi-вариант выбран, чтобы совпадать по `char*`-семантике (`TCHAR`) с Linux-сборкой, — единый P/Invoke-код (`CharSet.Ansi`) работает на обеих платформах без разветвления.
+  - `extractor/native/linux-x64/libStormLib.so` — тот же релиз, официальный Linux-пакет `libstorm-dev_v9.40_amd64.deb`, извлечён `.so` без системной установки.
+  - Лицензия — `extractor/native/StormLib-LICENSE.txt`. При необходимости x86 — переизвлечь `stormlib_v9.40_x86_RAD.zip` из того же релиза.
 - `web/` — Symfony 7.4 (PHP 8.3): backend, Doctrine migrations (source of truth схемы БД), Twig, Vue-island
 - `storage/icons/` — PNG-иконки талантов на диске, путь общий для экстрактора (пишет) и Symfony (раздаёт статику)
 

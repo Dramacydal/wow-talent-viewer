@@ -1,0 +1,20 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+
+  <!-- Vendored StormLib native binaries (see ../native/), copied straight into the output
+       root — plain DllImport probing checks the app base directory directly, not the
+       nested runtimes/{rid}/native NuGet convention (that needs a proper package/RID-graph
+       deps entry, not just loose copied files). DllImport("StormLib") resolves to
+       libStormLib.so on Linux / StormLib.dll on Windows automatically by name convention. -->
+  <ItemGroup>
+    <None Include="..\native\linux-x64\libStormLib.so" Link="libStormLib.so" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\native\win-x64\StormLib.dll" Link="StormLib.dll" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+</Project>

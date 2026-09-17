@@ -18,7 +18,9 @@
 - **Иконки**: `storage/icons/*.png`, имя файла = sha256 содержимого, дедуплицированы между талантами и билдами
 
 ## Commands
-_(заполнить по мере появления кода — `dotnet build`, `dotnet run --project extractor/Extractor.Cli`, `composer install`, `symfony server:start` и т.д.)_
+- Сборка экстрактора: `cd extractor && dotnet build`
+- Прогон (пока только spike-команда): `dotnet run --project Extractor.Cli --no-build -- spike-dbc "<путь к клиенту>"`
+- `web/` — пока нет кода (Фаза 3)
 
 ## Boundaries
 ### MUST

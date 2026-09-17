@@ -19,6 +19,9 @@ web/node_modules/
 storage/icons/*
 !storage/icons/.gitkeep
 
+# Scratch/temp downloads (project-local, not /tmp)
+.tmp/
+
 # OS / editor
 .DS_Store
 Thumbs.db
