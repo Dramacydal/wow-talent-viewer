@@ -1,4 +1,5 @@
 using System.Security.Cryptography;
+using Extractor.Dbc;
 using Extractor.Mpq;
 
 if (args.Length < 1)
@@ -14,6 +15,7 @@ return args[0] switch
     "spike-patch-verify" => SpikePatchVerify(args[1], args[2]),
     "grep-listfile" => GrepListfile(args[1], args[2]),
     "dump-file" => DumpFile(args[1], args[2], args[3]),
+    "spike-dbcd" => SpikeDbcd(args[1], args[2]),
     _ => Fail($"Unknown command: {args[0]}")
 };
 
@@ -102,6 +104,36 @@ static int DumpFile(string clientDir, string archiveName, string internalPath)
         return Fail($"'{internalPath}' not found in {archiveName}");
 
     Console.WriteLine(System.Text.Encoding.ASCII.GetString(archive.ReadFile(internalPath)));
+    return 0;
+}
+
+static int SpikeDbcd(string clientDir, string build)
+{
+    var dataDir = Path.Combine(clientDir, "Data");
+
+    using var archive = MpqArchive.Open(Path.Combine(dataDir, "dbc.MPQ"));
+    foreach (var patch in new[] { "patch.MPQ", "patch-2.MPQ" })
+    {
+        var patchPath = Path.Combine(dataDir, patch);
+        if (File.Exists(patchPath))
+            archive.ApplyPatch(patchPath);
+    }
+
+    var definitionsDir = Path.Combine(AppContext.BaseDirectory, "dbd-definitions");
+    var client = new DbcClient(archive, definitionsDir);
+
+    var talents = client.ReadTalents(build);
+    Console.WriteLine($"DBCD loaded {talents.Count} Talent rows for build {build}");
+
+    foreach (var t in talents.Take(5))
+    {
+        Console.WriteLine($"  #{t.Id} tab={t.TabId} tier={t.Tier} col={t.ColumnIndex} " +
+                           $"ranks=[{string.Join(",", t.SpellRanks)}] " +
+                           $"prereqTalent=[{string.Join(",", t.PrereqTalent)}] " +
+                           $"prereqRank=[{string.Join(",", t.PrereqRank)}] " +
+                           $"flags={t.Flags} requiredSpell={t.RequiredSpellId?.ToString() ?? "n/a"}");
+    }
+
     return 0;
 }
 

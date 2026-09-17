@@ -62,3 +62,12 @@ MySQL — существующий удалённый сервер пользо�
 
 ## Источники DBC-определений
 Приоритет: `wowdev/WoWDBDefs` (source of truth, тот же что использует DBCD) → `suprsokr/VanillaDBDefs` (резерв только для релизных 1.x, без альфы) → собственный fallback WDBC-ридер для непокрытых альфа-билдов. Подробности и обоснование — в плане `~/.claude/plans/zippy-tumbling-hummingbird.md`.
+
+## DBC-чтение: DBCD (реализовано, не fallback-ридер)
+`Extractor.Dbc.DbcClient` оборачивает [wowdev/DBCD](https://www.nuget.org/packages/DBCD) (NuGet, MIT, поддерживает `net10.0` напрямую):
+- `MpqDbcProvider : IDBCProvider` — кормит DBCD байтами прямо из уже открытого/запатченного `MpqArchive`, без промежуточной экстракции на диск.
+- `FilesystemDBDProvider` из самого DBCD — читает `.dbd` из `extractor/dbd-definitions/` (вендоренные, см. `dbd-definitions/README.md`, запиненный коммит WoWDBDefs), не тянет их из сети в рантайме.
+- `dbcd.Load("Talent", build)` — `build` в формате `x.x.x.xxxxx`, **совпадает 1:1** с именами папок клиентов пользователя (`1.12.1.5875` и т.п.) — конвертация не нужна.
+- Оба vanilla-layout'а (A/B, см. выше) подтверждены на реальных данных: `1.12.1.5875` → spell 11069 = "Improved Fireball" (сверено с wowhead), `0.7.0.3694` → `RequiredSpellID` корректно отсутствует.
+- Отсутствие колонки в конкретном layout'е (напр. `RequiredSpellID` в layout A) определяется через `storage.AvailableColumns.Contains(...)` **до** попытки чтения — попытка прочитать несуществующее для layout'а поле бросает исключение.
+- **Собственный fallback WDBC-ридер под вопросом отменён**: `WoWDBDefs` содержит обе нужные структуры (layout A и B) явным текстом, DBCD успешно грузит обе — ручной ридер не понадобился.

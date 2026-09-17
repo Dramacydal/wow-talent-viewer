@@ -4,10 +4,20 @@
     <ProjectReference Include="..\Extractor.Mpq\Extractor.Mpq.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <PackageReference Include="DBCD" Version="2.3.0" />
+  </ItemGroup>
+
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
   </PropertyGroup>
+
+  <!-- Vendored WoWDBDefs .dbd files (pinned commit — see architecture.md), copied next to
+       the built assembly so FilesystemDBDProvider can find them without a repo-relative path. -->
+  <ItemGroup>
+    <None Include="..\dbd-definitions\*.dbd" Link="dbd-definitions\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
 
 </Project>
