@@ -336,7 +336,12 @@ public sealed class BuildExtractor(
                     continue;
                 }
 
-                rows.Add([ourTalentId, requiresOurId, talent.PrereqRank[i]]);
+                // PrereqRank is 0-indexed in the DBC, same convention as Spell.EffectBasePoints
+                // (see SpellDescriptionFormatter) - confirmed empirically, not guessed: every
+                // single prerequisite across the full extracted dataset has requiresRank equal
+                // to EXACTLY maxRank-1 for the required talent (65/65 pairs on 1.12.2.6005,
+                // zero exceptions), which only makes sense if the real intent is "max rank".
+                rows.Add([ourTalentId, requiresOurId, talent.PrereqRank[i] + 1]);
             }
         }
 
