@@ -22,6 +22,7 @@ return args[0] switch
     "spike-spell" => SpikeSpell(args[1], args[2]),
     "raw-talent-record" => RawTalentRecord(args[1], int.Parse(args[2])),
     "raw-talent-by-id" => RawTalentById(args[1], int.Parse(args[2])),
+    "talents-in-tab" => TalentsInTab(args[1], args[2], int.Parse(args[3])),
     _ => Fail($"Unknown command: {args[0]}")
 };
 
@@ -214,6 +215,22 @@ static int RawTalentById(string clientDir, int targetId)
     }
 
     return Fail($"No record with ID={targetId} found among {recordCount} records.");
+}
+
+static int TalentsInTab(string clientDir, string build, int tabId)
+{
+    using var archive = OpenPatchedDbc(clientDir);
+    var client = MakeDbcClient(archive);
+
+    var talents = client.ReadTalents(build).Where(t => t.TabId == tabId).OrderBy(t => t.Tier).ThenBy(t => t.ColumnIndex);
+    foreach (var t in talents)
+    {
+        var firstRankId = t.SpellRanks.First(id => id != 0);
+        var spell = client.GetSpell(build, firstRankId);
+        Console.WriteLine($"  talent #{t.Id} tier={t.Tier} col={t.ColumnIndex}: {spell?.Name ?? "?"} (spell {firstRankId})");
+    }
+
+    return 0;
 }
 
 static int SpikeSpell(string clientDir, string build)
