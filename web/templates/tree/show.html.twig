@@ -5,7 +5,5 @@
 {% block importmap %}{{ importmap('talent-tree') }}{% endblock %}
 
 {% block body %}
-    <div id="talent-tree-app" data-tree-url="{{ path('api_talent_tree', { buildLabel: build.label, classSlug: class.slug }) }}">
-        Loading...
-    </div>
+    <div id="talent-tree-app" data-tree-url="{{ path('api_talent_tree', { buildLabel: build.label, classSlug: class.slug }) }}"></div>
 {% endblock %}

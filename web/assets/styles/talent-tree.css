@@ -1,0 +1,214 @@
+:root {
+    --tt-cell: 44px;
+    --tt-gap: 6px;
+    --tt-bg: #0b0908;
+    --tt-panel: #17130f;
+    --tt-panel-border: #4a3a22;
+    --tt-gold: #c9a227;
+    --tt-text: #d8cdb8;
+    --tt-text-dim: #8a8070;
+}
+
+body {
+    background: var(--tt-bg);
+    color: var(--tt-text);
+    font-family: "Segoe UI", Arial, sans-serif;
+}
+
+.tt-page {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 20px 16px 60px;
+}
+
+.tt-header h1 {
+    font-size: 22px;
+    color: var(--tt-gold);
+    margin: 0 0 12px;
+    text-shadow: 0 1px 2px #000;
+}
+
+.tt-summary {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 14px;
+    background: var(--tt-panel);
+    border: 1px solid var(--tt-panel-border);
+    border-radius: 6px;
+    padding: 8px 14px;
+    margin-bottom: 20px;
+}
+
+.tt-summary-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    color: var(--tt-text-dim);
+}
+
+.tt-summary-item img {
+    border-radius: 3px;
+}
+
+.tt-summary-total {
+    margin-left: auto;
+    font-weight: bold;
+    color: var(--tt-gold);
+}
+
+.tt-reset {
+    background: #2a1f14;
+    border: 1px solid var(--tt-panel-border);
+    color: var(--tt-text);
+    border-radius: 4px;
+    padding: 4px 12px;
+    cursor: pointer;
+    font-size: 13px;
+}
+
+.tt-reset:hover {
+    border-color: var(--tt-gold);
+    color: var(--tt-gold);
+}
+
+.tt-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 18px;
+    justify-content: center;
+}
+
+.tt-tab {
+    background:
+        radial-gradient(ellipse at center, rgba(60, 40, 20, 0.55) 0%, rgba(10, 8, 6, 0.95) 75%),
+        linear-gradient(160deg, #241a10, #0c0a08);
+    border: 1px solid var(--tt-panel-border);
+    border-radius: 8px;
+    box-shadow: inset 0 0 40px 14px rgba(0, 0, 0, 0.85), 0 2px 6px rgba(0, 0, 0, 0.6);
+    padding: 10px;
+}
+
+.tt-tab-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+    color: var(--tt-gold);
+    margin: 0 0 10px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid var(--tt-panel-border);
+}
+
+.tt-tab-title img {
+    border-radius: 4px;
+    border: 1px solid var(--tt-panel-border);
+}
+
+.tt-tab-points {
+    margin-left: auto;
+    color: var(--tt-text-dim);
+    font-weight: normal;
+    font-size: 12px;
+}
+
+.tt-grid {
+    position: relative;
+    display: grid;
+    gap: var(--tt-gap);
+}
+
+.tt-connectors {
+    position: absolute;
+    top: 0;
+    left: 0;
+    pointer-events: none;
+    overflow: visible;
+}
+
+.tt-connectors line {
+    stroke: #5a4626;
+    stroke-width: 2;
+}
+
+.tt-connectors line.tt-connector-active {
+    stroke: var(--tt-gold);
+}
+
+.tt-cell {
+    position: relative;
+    width: var(--tt-cell);
+    height: var(--tt-cell);
+    border-radius: 5px;
+    border: 1px solid #000;
+    box-shadow: 0 0 0 1px #3a2e1c;
+    cursor: pointer;
+    background: #1a1510;
+}
+
+.tt-cell img {
+    width: 100%;
+    height: 100%;
+    border-radius: 4px;
+    display: block;
+}
+
+.tt-cell.tt-locked {
+    cursor: not-allowed;
+}
+
+.tt-cell.tt-locked img {
+    filter: grayscale(1) brightness(0.55);
+}
+
+.tt-cell.tt-maxed {
+    box-shadow: 0 0 0 1px var(--tt-gold), 0 0 6px 1px rgba(201, 162, 39, 0.7);
+}
+
+.tt-cell.tt-spent:not(.tt-maxed) {
+    box-shadow: 0 0 0 1px #7a6432;
+}
+
+.tt-cell-rank {
+    position: absolute;
+    right: -2px;
+    bottom: -4px;
+    background: #000;
+    border: 1px solid #3a2e1c;
+    border-radius: 3px;
+    font-size: 10px;
+    line-height: 1;
+    padding: 2px 3px;
+    color: var(--tt-text-dim);
+}
+
+.tt-cell.tt-spent .tt-cell-rank {
+    color: var(--tt-gold);
+}
+
+.tt-tooltip {
+    position: fixed;
+    z-index: 100;
+    max-width: 280px;
+    background: #0e0c0a;
+    border: 1px solid var(--tt-gold);
+    border-radius: 6px;
+    padding: 8px 10px;
+    font-size: 12px;
+    line-height: 1.4;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.7);
+    pointer-events: none;
+}
+
+.tt-tooltip-title {
+    color: var(--tt-gold);
+    font-weight: bold;
+    margin-bottom: 4px;
+}
+
+.tt-tooltip-req {
+    color: #b23a3a;
+    margin-top: 6px;
+    font-size: 11px;
+}
