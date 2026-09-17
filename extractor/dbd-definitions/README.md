@@ -14,3 +14,4 @@ and note the new commit hash here.
 | `TalentTab.dbd` | TalentTab.dbc — 3 vanilla layouts, see gotchas.md | `2b8d984` (2026-09-16) |
 | `Spell.dbd` | Spell.dbc — 16 separate vanilla-era layout blocks (huge table, changes constantly), but `Name_lang`/`NameSubtext_lang`/`Description_lang`/`SpellIconID` are present unchanged across all of them | `2b8d984` (2026-09-16) |
 | `SpellIcon.dbd` | SpellIcon.dbc — trivial, unchanged for all of vanilla (`ID` + `TextureFilename`) | `267de35` (2020-09-04) |
+| `ChrClasses.dbd` | ChrClasses.dbc — class names/`PlayerClass` (number used to build classMask = `1<<(PlayerClass-1)`); 4 vanilla layouts, only `Filename` missing before `0.5.5.3494` | `2b8d984` (2026-09-16) |

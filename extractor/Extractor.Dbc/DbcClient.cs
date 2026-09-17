@@ -113,6 +113,26 @@ public sealed class DbcClient
         return records;
     }
 
+    public IReadOnlyList<ChrClassRecord> ReadChrClasses(string build)
+    {
+        var index = LoadIndexedById("ChrClasses", build, global::DBCD.Locale.EnUS);
+        var storage = Load("ChrClasses", build, global::DBCD.Locale.EnUS);
+        var hasFilename = storage.AvailableColumns.Contains("Filename");
+
+        var records = new List<ChrClassRecord>(index.Count);
+        foreach (var row in index.Values)
+        {
+            records.Add(new ChrClassRecord(
+                Id: row.Field<int>("ID"),
+                PlayerClass: row.Field<int>("PlayerClass"),
+                Name: row.Field<string>("Name_lang"),
+                PetNameToken: row.Field<string>("PetNameToken"),
+                Filename: hasFilename ? row.Field<string>("Filename") : null));
+        }
+
+        return records;
+    }
+
     /// <summary>Looks up a single spell by its real ID (e.g. one talent rank's SpellRank entry).
     /// Loads Spell.dbc once per build and caches it — safe to call per-rank in a loop.</summary>
     public SpellRecord? GetSpell(string build, int id)

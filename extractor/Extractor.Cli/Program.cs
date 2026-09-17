@@ -23,6 +23,7 @@ return args[0] switch
     "raw-talent-record" => RawTalentRecord(args[1], int.Parse(args[2])),
     "raw-talent-by-id" => RawTalentById(args[1], int.Parse(args[2])),
     "talents-in-tab" => TalentsInTab(args[1], args[2], int.Parse(args[3])),
+    "spike-chrclasses" => SpikeChrClasses(args[1], args[2]),
     _ => Fail($"Unknown command: {args[0]}")
 };
 
@@ -215,6 +216,22 @@ static int RawTalentById(string clientDir, int targetId)
     }
 
     return Fail($"No record with ID={targetId} found among {recordCount} records.");
+}
+
+static int SpikeChrClasses(string clientDir, string build)
+{
+    using var archive = OpenPatchedDbc(clientDir);
+    var client = MakeDbcClient(archive);
+
+    var classes = client.ReadChrClasses(build);
+    Console.WriteLine($"DBCD loaded {classes.Count} ChrClasses rows for build {build}");
+    foreach (var c in classes.OrderBy(c => c.PlayerClass))
+    {
+        Console.WriteLine($"  #{c.Id} playerClass={c.PlayerClass} classMaskFromId={1 << (c.Id - 1)} " +
+                           $"name=\"{c.Name}\" petToken=\"{c.PetNameToken}\" filename={c.Filename ?? "n/a"}");
+    }
+
+    return 0;
 }
 
 static int TalentsInTab(string clientDir, string build, int tabId)
