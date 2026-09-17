@@ -1,4 +1,5 @@
 using System.Security.Cryptography;
+using Extractor.Blp;
 using Extractor.Dbc;
 using Extractor.Mpq;
 
@@ -24,6 +25,8 @@ return args[0] switch
     "raw-talent-by-id" => RawTalentById(args[1], int.Parse(args[2])),
     "talents-in-tab" => TalentsInTab(args[1], args[2], int.Parse(args[3])),
     "spike-chrclasses" => SpikeChrClasses(args[1], args[2]),
+    "resolve-icon" => ResolveIcon(args[1], args[2], int.Parse(args[3])),
+    "extract-icon" => ExtractIcon(args[1], args[2], int.Parse(args[3]), args[4]),
     _ => Fail($"Unknown command: {args[0]}")
 };
 
@@ -218,6 +221,60 @@ static int RawTalentById(string clientDir, int targetId)
     return Fail($"No record with ID={targetId} found among {recordCount} records.");
 }
 
+// Full pipeline for one icon: MPQ -> resolve extension -> BLP decode -> PNG encode ->
+// content-hash filename, written under storagePath (mirrors the real storage/icons/ layout).
+static int ExtractIcon(string clientDir, string build, int spellIconId, string storagePath)
+{
+    using var archive = OpenPatchedDbc(clientDir);
+    var client = MakeDbcClient(archive);
+
+    var icon = client.GetSpellIcon(build, spellIconId);
+    if (icon is null)
+        return Fail($"SpellIcon {spellIconId} not found");
+
+    var dataDir = Path.Combine(clientDir, "Data");
+    using var iface = MpqArchive.Open(Path.Combine(dataDir, "interface.MPQ"));
+    PatchChain.ApplyAll(iface, dataDir);
+
+    var resolvedPath = IconFileResolver.Resolve(iface, icon.TextureFilename);
+    if (resolvedPath is null)
+        return Fail($"Could not resolve '{icon.TextureFilename}' to a .blp or .tga file");
+
+    if (!resolvedPath.EndsWith(".blp", StringComparison.OrdinalIgnoreCase))
+        return Fail($"'{resolvedPath}' is not a .blp — no decoder wired up for that yet");
+
+    var blpBytes = iface.ReadFile(resolvedPath);
+    var pngBytes = BlpConverter.ConvertToPng(blpBytes);
+    var hash = Convert.ToHexString(SHA256.HashData(pngBytes)).ToLowerInvariant();
+
+    Directory.CreateDirectory(storagePath);
+    var outPath = Path.Combine(storagePath, $"{hash}.png");
+    File.WriteAllBytes(outPath, pngBytes);
+
+    Console.WriteLine($"'{resolvedPath}' ({blpBytes.Length}b BLP) -> {outPath} ({pngBytes.Length}b PNG)");
+    return 0;
+}
+
+static int ResolveIcon(string clientDir, string build, int spellIconId)
+{
+    using var archive = OpenPatchedDbc(clientDir);
+    var client = MakeDbcClient(archive);
+
+    var icon = client.GetSpellIcon(build, spellIconId);
+    if (icon is null)
+        return Fail($"SpellIcon {spellIconId} not found");
+
+    // The icon lives in interface.MPQ (+ patches), not dbc.MPQ — open that chain too.
+    var dataDir = Path.Combine(clientDir, "Data");
+    using var iface = MpqArchive.Open(Path.Combine(dataDir, "interface.MPQ"));
+    PatchChain.ApplyAll(iface, dataDir);
+
+    var resolved = IconFileResolver.Resolve(iface, icon.TextureFilename);
+    Console.WriteLine($"SpellIcon {spellIconId}: TextureFilename=\"{icon.TextureFilename}\" resolved={resolved ?? "NOT FOUND (neither .blp nor .tga)"}");
+
+    return 0;
+}
+
 static int SpikeChrClasses(string clientDir, string build)
 {
     using var archive = OpenPatchedDbc(clientDir);
@@ -272,7 +329,7 @@ static int SpikeSpell(string clientDir, string build)
 
             var icon = client.GetSpellIcon(build, spell.SpellIconId);
             Console.WriteLine($"  spell {spellId}: name=\"{spell.Name}\" subtext=\"{spell.NameSubtext}\" " +
-                               $"icon=\"{icon?.TextureFilename ?? "n/a"}\"");
+                               $"spellIconId={spell.SpellIconId} icon=\"{icon?.TextureFilename ?? "n/a"}\"");
             Console.WriteLine($"    desc: {spell.Description}");
         }
     }
