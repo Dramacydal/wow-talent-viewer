@@ -159,12 +159,13 @@ body {
     overflow: visible;
 }
 
-.tt-connectors line {
+.tt-connectors polyline {
+    fill: none;
     stroke: #5a4626;
     stroke-width: 2;
 }
 
-.tt-connectors line.tt-connector-active {
+.tt-connectors polyline.tt-connector-active {
     stroke: var(--tt-gold);
 }
 

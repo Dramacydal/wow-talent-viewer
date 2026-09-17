@@ -164,9 +164,19 @@ createApp({
                     if (!from) continue; // prerequisite outside this tab - not expected in vanilla, skip defensively
                     const a = cellCenter(from.tier, from.columnIndex);
                     const b = cellCenter(talent.tier, talent.columnIndex);
+                    // Same column: straight vertical line. Different column: an elbow -
+                    // down from the source to the midpoint between the two tiers, across,
+                    // then down into the target - not a diagonal, matching how the real
+                    // client/wowhead draw prerequisite arrows.
+                    const points = a.x === b.x
+                        ? `${a.x},${a.y} ${b.x},${b.y}`
+                        : (() => {
+                            const midY = (a.y + b.y) / 2;
+                            return `${a.x},${a.y} ${a.x},${midY} ${b.x},${midY} ${b.x},${b.y}`;
+                        })();
                     lines.push({
                         key: `${prereq.requiresTalentId}-${talent.id}`,
-                        x1: a.x, y1: a.y, x2: b.x, y2: b.y,
+                        points,
                         active: (this.spent[prereq.requiresTalentId] || 0) >= prereq.requiresRank,
                     });
                 }
@@ -235,9 +245,9 @@ createApp({
                         </h2>
                         <div class="tt-grid" :style="gridStyle(tab)">
                             <svg class="tt-connectors">
-                                <line v-for="c in connectors(tab)" :key="c.key"
-                                      :x1="c.x1" :y1="c.y1" :x2="c.x2" :y2="c.y2"
-                                      :class="{ 'tt-connector-active': c.active }" />
+                                <polyline v-for="c in connectors(tab)" :key="c.key"
+                                          :points="c.points"
+                                          :class="{ 'tt-connector-active': c.active }" />
                             </svg>
                             <div v-for="talent in tab.talents" :key="talent.id"
                                  class="tt-cell" :class="cellClasses(tab, talent)" :style="cellStyle(talent)"
