@@ -43,12 +43,13 @@ public sealed partial class SpellDescriptionFormatter(DbcClient dbcClient, strin
         text = CombatRatingRegex().Replace(text, m => $"<{m.Groups[1].Value.ToUpperInvariant()}>");
 
         double? lastNumericValue = null;
-        text = TokenRegex().Replace(text, m => ResolveToken(m, spell, ref lastNumericValue));
+        var sourceForLookahead = text; // Match.Index below refers to THIS string, not the post-replace result
+        text = TokenRegex().Replace(text, m => ResolveToken(m, spell, sourceForLookahead, ref lastNumericValue));
 
         return text;
     }
 
-    private string ResolveToken(Match m, SpellRecord ownerSpell, ref double? lastNumericValue)
+    private string ResolveToken(Match m, SpellRecord ownerSpell, string sourceText, ref double? lastNumericValue)
     {
         var letter = m.Groups["letter"].Value;
         var idx = m.Groups["idx"].Success ? int.Parse(m.Groups["idx"].Value) : 1;
@@ -113,12 +114,21 @@ public sealed partial class SpellDescriptionFormatter(DbcClient dbcClient, strin
         // QSpellWork exactly (always "seconds", even for 1 — a real, if grammatically odd,
         // quirk faithfully reproduced rather than "corrected"). A modified duration (e.g.
         // "$/1000;S1 sec" for a cast-time reduction) is left bare: the surrounding sentence
-        // already spells out the unit by hand in those cases.
-        if (char.ToLowerInvariant(letter[0]) == 'd' && !m.Groups["op"].Success)
+        // already spells out the unit by hand in those cases. Also skipped when the raw text
+        // ALREADY writes "seconds" right after the token by hand — real (if inconsistent)
+        // vanilla alpha authoring, e.g. Blast Wave's "...dazing them for $d seconds." would
+        // otherwise read "...6 seconds seconds.".
+        if (char.ToLowerInvariant(letter[0]) == 'd' && !m.Groups["op"].Success && !FollowedByTheWordSeconds(sourceText, m))
             formatted += " seconds";
 
         return formatted;
     }
+
+    [GeneratedRegex(@"^\s+seconds?\b", RegexOptions.IgnoreCase)]
+    private static partial Regex SecondsWordRegex();
+
+    private static bool FollowedByTheWordSeconds(string sourceText, Match m) =>
+        SecondsWordRegex().IsMatch(sourceText[(m.Index + m.Length)..]);
 
     /// <summary>Total effect value over a periodic effect's full duration — QSpellWork's
     /// getRealDuration() * (basePoints+1): duration divided by tick period (defaulting to a
