@@ -164,20 +164,20 @@ createApp({
                     if (!from) continue; // prerequisite outside this tab - not expected in vanilla, skip defensively
                     const a = cellCenter(from.tier, from.columnIndex);
                     const b = cellCenter(talent.tier, talent.columnIndex);
-                    // Same column: straight vertical line. Different column: an elbow -
-                    // down from the source, across, then down into the target - not a
-                    // diagonal, matching how the real client/wowhead draw prerequisite
-                    // arrows. The bend sits right below the SOURCE (middle of the gap
-                    // right after its row), not at the midpoint of the whole span - when
-                    // one source fans out to several targets (straight + elbow), this
-                    // keeps every branch forking at the same point directly under the
-                    // source instead of at a different height per target.
+                    // Same column -> straight vertical. Same tier (rare but real, see
+                    // gotchas.md) -> straight horizontal. Otherwise -> a right-angle elbow
+                    // that goes RIGHT from the source's own center first, then straight
+                    // down into the target - not a diagonal, and not "down then across"
+                    // either: a source with two dependents (one directly below, one
+                    // diagonal) must not have its straight and elbow lines share ANY
+                    // pixels, or they visually read as one line that forks partway down.
+                    // Going right first, at the source's own y, means the two paths only
+                    // ever share their single common starting POINT, never a segment.
                     const points = a.x === b.x
                         ? `${a.x},${a.y} ${b.x},${b.y}`
-                        : (() => {
-                            const bendY = a.y + CELL / 2 + GAP / 2;
-                            return `${a.x},${a.y} ${a.x},${bendY} ${b.x},${bendY} ${b.x},${b.y}`;
-                        })();
+                        : a.y === b.y
+                            ? `${a.x},${a.y} ${b.x},${b.y}`
+                            : `${a.x},${a.y} ${b.x},${a.y} ${b.x},${b.y}`;
                     lines.push({
                         key: `${prereq.requiresTalentId}-${talent.id}`,
                         points,
