@@ -16,6 +16,7 @@ return args[0] switch
 {
     "spike-dbc" => SpikeDbc(args[1]),
     "raw-dbc-header" => RawDbcHeader(args[1], args[2]),
+    "grep-raw-desc" => GrepRawDescriptions(args[1], args[2], args[3]),
     "spike-patch-verify" => SpikePatchVerify(args[1], args[2]),
     "grep-listfile" => GrepListfile(args[1], args[2]),
     "dump-file" => DumpFile(args[1], args[2], args[3]),
@@ -335,6 +336,43 @@ static int SpikeFormatDescription(string clientDir, string build, int spellId)
 
     Console.WriteLine($"raw:       {spell.Description}");
     Console.WriteLine($"formatted: {formatter.Format(spell)}");
+    return 0;
+}
+
+/// <summary>Scans every talent rank's RAW (pre-SpellDescriptionFormatter) Spell.Description
+/// text for a given regex - used to check the source data straight from the DBC for escape
+/// syntax the formatter doesn't handle, rather than trusting the already-formatted text
+/// stored in MySQL (a leftover "$" there would already reveal an unresolved token, but only
+/// for tokens whose failure mode leaves "$" behind - checking the raw text directly is the
+/// only way to be sure about a syntax hypothesis, e.g. "+"/"-" modifiers).</summary>
+static int GrepRawDescriptions(string clientDir, string build, string pattern)
+{
+    using var archive = OpenPatchedDbc(clientDir);
+    var client = MakeDbcClient(archive);
+    var regex = new System.Text.RegularExpressions.Regex(pattern);
+
+    var talents = client.ReadTalents(build);
+    var seenSpellIds = new HashSet<int>();
+    var matches = 0;
+
+    foreach (var t in talents)
+    {
+        foreach (var spellId in t.SpellRanks.Where(id => id != 0))
+        {
+            if (!seenSpellIds.Add(spellId)) continue; // same spell can back multiple talents
+
+            var spell = client.GetSpell(build, spellId);
+            if (spell?.Description is null) continue;
+
+            if (regex.IsMatch(spell.Description))
+            {
+                matches++;
+                Console.WriteLine($"spell {spellId} \"{spell.Name}\": {spell.Description}");
+            }
+        }
+    }
+
+    Console.WriteLine($"{matches} match(es) out of {seenSpellIds.Count} distinct raw spell descriptions checked");
     return 0;
 }
 
