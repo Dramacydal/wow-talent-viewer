@@ -196,18 +196,24 @@ body {
     filter: grayscale(1) brightness(0.55);
 }
 
-.tt-cell.tt-maxed {
-    box-shadow: 0 0 0 1px var(--tt-gold), 0 0 6px 1px rgba(201, 162, 39, 0.7);
+/* Available to learn right now (tier unlocked, all prerequisites met, not yet maxed). */
+.tt-cell.tt-available {
+    box-shadow: 0 0 0 2px #3fd13f, 0 0 6px 1px rgba(63, 209, 63, 0.6);
 }
 
-.tt-cell.tt-spent:not(.tt-maxed) {
-    box-shadow: 0 0 0 1px #7a6432;
+.tt-cell.tt-maxed {
+    box-shadow: 0 0 0 2px var(--tt-gold), 0 0 6px 1px rgba(201, 162, 39, 0.7);
 }
 
 .tt-cell-rank {
     position: absolute;
-    right: -2px;
-    bottom: -4px;
+    right: 0;
+    bottom: 0;
+    /* Corner-badge trick: right/bottom 0 puts the badge's own edge flush with the cell's
+       corner, then shifting by 50% of its OWN box moves its center exactly onto that
+       corner point regardless of the badge's rendered width (varies with "0/1" vs
+       "0/10"-style text) - matches wowhead's rank-count placement. */
+    transform: translate(50%, 50%);
     background: #000;
     border: 1px solid #3a2e1c;
     border-radius: 3px;
@@ -217,7 +223,11 @@ body {
     color: var(--tt-text-dim);
 }
 
-.tt-cell.tt-spent .tt-cell-rank {
+.tt-cell.tt-available .tt-cell-rank {
+    color: #3fd13f;
+}
+
+.tt-cell.tt-maxed .tt-cell-rank {
     color: var(--tt-gold);
 }
 

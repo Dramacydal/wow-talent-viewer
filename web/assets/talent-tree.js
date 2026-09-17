@@ -142,13 +142,13 @@ createApp({
         resetAll() {
             for (const id in this.spent) this.spent[id] = 0;
         },
+        // Three mutually exclusive states: maxed (gold), available to spend right now
+        // (green - tier unlocked, all prerequisites met), or locked (default/gray).
         cellClasses(tab, talent) {
             const spent = this.spent[talent.id] || 0;
-            return {
-                'tt-locked': !this.canSpend(tab, talent) && spent === 0,
-                'tt-spent': spent > 0,
-                'tt-maxed': spent === talent.maxRank,
-            };
+            if (spent === talent.maxRank) return { 'tt-maxed': true };
+            if (this.canSpend(tab, talent)) return { 'tt-available': true };
+            return { 'tt-locked': true };
         },
         cellStyle(talent) {
             return {
