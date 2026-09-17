@@ -19,8 +19,9 @@
 
 ## Commands
 - Сборка экстрактора: `cd extractor && dotnet build`
-- Прогон (пока только spike-команда): `dotnet run --project Extractor.Cli --no-build -- spike-dbc "<путь к клиенту>"`
-- `web/` — пока нет кода (Фаза 3)
+- Прогон diagnostic/spike-команд: `dotnet run --project Extractor.Cli --no-build -- <command> ...` (список команд — в начале `Extractor.Cli/Program.cs`)
+- Symfony: `cd web && composer install`, `php bin/console <command>` (PHP 8.3 через `update-alternatives`, реальный DB-коннект — в `web/.env.local`, не в git)
+- Миграции схемы: `php bin/console doctrine:migrations:migrate` (новую миграцию — `doctrine:migrations:diff`, но **обязательно проверить сгенерированный файл на DROP/ALTER посторонних таблиц** перед применением — БД пользователя может быть общей с другими его инструментами)
 
 ## Boundaries
 ### MUST
@@ -28,6 +29,7 @@
 - Все таблицы с данными о талантах скоуплены по `client_build_id` (дерево различается между патчами)
 - Спецификации полей DBC брать из [wowdev/WoWDBDefs](https://github.com/wowdev/WoWDBDefs), не с wowdev.wiki
 - Иконки — дедупликация по content-hash (см. `.claude-docs/architecture.md`), старые PNG никогда не удалять
+- Перед `doctrine:migrations:migrate` на реальной БД — всегда читать сгенерированный файл миграции целиком; БД пользователя может быть общей с другими его инструментами (реальный случай: `doctrine:migrations:diff` сгенерировал `DROP TABLE builds` для чужой таблицы в общей БД — см. gotchas.md)
 - `TalentTab.ID`/любые DBC ID — валидны только внутри одного билда, никогда не сопоставлять между билдами; осиротевшие ссылки (`TabID`, не резолвящийся в реальный `TalentTab` того же билда) — пропускать с логом, не писать битым FK (см. `.claude-docs/gotchas.md`)
 
 ### MUST NOT
