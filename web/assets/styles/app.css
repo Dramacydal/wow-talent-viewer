@@ -1,3 +1,97 @@
-body {
-    background-color: skyblue;
+/* Landing page. Same dark/gold theme as talent-tree.css (kept duplicated rather than
+   sharing a file across the two separate AssetMapper entrypoints - a handful of variables
+   isn't worth the cross-file @import complexity). */
+:root {
+    --tt-bg: #0b0908;
+    --tt-panel: #17130f;
+    --tt-panel-border: #4a3a22;
+    --tt-gold: #c9a227;
+    --tt-text: #d8cdb8;
+    --tt-text-dim: #8a8070;
 }
+
+body {
+    background: var(--tt-bg);
+    color: var(--tt-text);
+    font-family: "Segoe UI", Arial, sans-serif;
+}
+
+.home {
+    max-width: 700px;
+    margin: 0 auto;
+    padding: 60px 16px;
+    text-align: center;
+}
+
+.home-title {
+    font-size: 28px;
+    color: var(--tt-gold);
+    text-shadow: 0 1px 2px #000;
+    margin: 0 0 32px;
+}
+
+.home-build-select {
+    background: var(--tt-panel);
+    border: 1px solid var(--tt-panel-border);
+    color: var(--tt-text);
+    border-radius: 4px;
+    padding: 8px 14px;
+    font-size: 15px;
+    margin-bottom: 40px;
+}
+
+.home-build-select:hover {
+    border-color: var(--tt-gold);
+}
+
+.class-row {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 18px;
+}
+
+.class-row-empty {
+    color: var(--tt-text-dim);
+}
+
+.class-icon {
+    display: block;
+    text-decoration: none;
+}
+
+.class-icon-label {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 56px;
+    height: 56px;
+    border-radius: 8px;
+    border: 2px solid var(--tt-panel-border);
+    background: var(--tt-panel);
+    color: #1a1510;
+    font-weight: bold;
+    font-size: 14px;
+    letter-spacing: 0.5px;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.6);
+    transition: border-color 0.15s, transform 0.15s;
+}
+
+.class-icon:hover .class-icon-label {
+    border-color: var(--tt-gold);
+    transform: translateY(-2px);
+}
+
+/* Placeholder colors - the standard WoW class colors, used everywhere in and around the
+   game (character frames, chat, wowhead itself) - not a game asset, just a color code
+   convention. Swap .class-icon-label's background for a real class icon image here once
+   one is extracted/available; the markup won't need to change. */
+.class-icon--warrior .class-icon-label { background: #c79c6e; }
+.class-icon--paladin .class-icon-label { background: #f58cba; }
+.class-icon--hunter .class-icon-label { background: #abd473; }
+.class-icon--rogue .class-icon-label { background: #fff569; }
+.class-icon--priest .class-icon-label { background: #ffffff; }
+.class-icon--shaman .class-icon-label { background: #0070de; color: #fff; }
+.class-icon--mage .class-icon-label { background: #69ccf0; }
+.class-icon--warlock .class-icon-label { background: #9482c9; color: #fff; }
+.class-icon--druid .class-icon-label { background: #ff7d0a; }
