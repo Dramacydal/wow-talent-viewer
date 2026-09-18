@@ -339,7 +339,20 @@ const vueApp = createApp({
         showTooltip(tab, talent, event) {
             this.hoveredTab = tab;
             this.hoveredTalent = talent;
+            // Always start from the default (mouse + 16,16) position - only shift away from
+            // it if the tooltip's real rendered height (unknown until it's in the DOM, since
+            // it depends on content: description length, whether the ability rows show,
+            // etc.) would push it past the bottom of the viewport.
             this.tooltipPos = { x: event.clientX + 16, y: event.clientY + 16 };
+            this.$nextTick(() => this.clampTooltipToViewport());
+        },
+        clampTooltipToViewport() {
+            const el = this.$refs.tooltipEl;
+            if (!el) return;
+            const overflow = el.getBoundingClientRect().bottom - window.innerHeight;
+            if (overflow > 0) {
+                this.tooltipPos = { ...this.tooltipPos, y: this.tooltipPos.y - overflow - 8 };
+            }
         },
         hideTooltip() {
             this.hoveredTab = null;
@@ -439,7 +452,7 @@ const vueApp = createApp({
                 </div>
             </template>
             <p v-else>Loading...</p>
-            <div v-if="tooltip" class="tt-tooltip" :style="{ left: tooltip.x + 'px', top: tooltip.y + 'px' }">
+            <div v-if="tooltip" ref="tooltipEl" class="tt-tooltip" :style="{ left: tooltip.x + 'px', top: tooltip.y + 'px' }">
                 <div class="tt-tooltip-title">
                     <span>{{ tooltip.name }} ({{ tooltip.spent }}/{{ tooltip.maxRank }})</span>
                     <span v-if="settings.showTalentIdInTooltip" class="tt-tooltip-id">#{{ tooltip.talentId }}</span>
