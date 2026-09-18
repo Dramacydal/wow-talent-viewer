@@ -168,11 +168,10 @@ createApp({
             const corners = [bg.topLeft, bg.topRight, bg.bottomLeft, bg.bottomRight];
             if (corners.every((url) => !url)) return {};
             // Quadrants are native 256x256 / 64x256 / 256x128 / 64x128 (client's fixed
-            // 320x384 talent frame), but our panel's height varies with tier count - so
-            // corner-anchored natural-size images leave a gap where the panel is taller
-            // than 384px. Sizing each quadrant as a percentage of the panel (matching its
-            // real proportion of the combined 320x384 art) makes all 4 tile exactly with
-            // no gap/overlap regardless of panel size, at the cost of a mild stretch.
+            // 320x384 talent frame). .tt-tab-art is aspect-ratio-locked to the same 320:384,
+            // so sizing each quadrant as its real fractional share of that box (80/20 width
+            // split, 66.667/33.333 height split) tiles them exactly with NO stretch and no
+            // gap - the container's own shape already matches the art's shape.
             return {
                 backgroundImage: corners.map((url) => (url ? `url(${url})` : 'none')).join(', '),
                 backgroundPosition: 'top left, top right, bottom left, bottom right',
@@ -300,12 +299,13 @@ createApp({
                     </div>
                 </header>
                 <div class="tt-tabs">
-                    <section class="tt-tab" v-for="tab in tree.tabs" :key="tab.id" :style="tabBackgroundStyle(tab)">
+                    <section class="tt-tab" v-for="tab in tree.tabs" :key="tab.id">
                         <h2 class="tt-tab-title">
                             <img v-if="tab.iconUrl" :src="tab.iconUrl" width="24" height="24" alt="">
                             {{ tab.name }}
                             <span class="tt-tab-points">{{ totalSpentInTab(tab) }}</span>
                         </h2>
+                        <div class="tt-tab-art" :style="tabBackgroundStyle(tab)">
                         <div class="tt-grid" :style="gridStyle(tab)">
                             <svg class="tt-connectors">
                                 <polyline v-for="c in connectors(tab)" :key="c.key"
@@ -323,6 +323,7 @@ createApp({
                                 <img v-if="talent.ranks[0].iconUrl" :src="talent.ranks[0].iconUrl" alt="">
                                 <span class="tt-cell-rank">{{ spent[talent.id] || 0 }}/{{ talent.maxRank }}</span>
                             </div>
+                        </div>
                         </div>
                     </section>
                 </div>
