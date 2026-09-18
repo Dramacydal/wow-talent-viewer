@@ -316,10 +316,12 @@ public sealed class BuildExtractor(
                 var iconPath = ResolveIcon(spell.SpellIconId);
                 var description = descriptionFormatter.Format(spell);
                 var ability = ResolveAbilityFields(spell);
+                var stanceRequirement = ResolveStanceRequirement(spell);
+                var equipRequirement = ResolveEquipRequirement(spell);
                 rows.Add([ourTalentId, i + 1, spellId, spell.Name, description, iconPath,
                           ability.IsAbility, ability.PowerType, ability.PowerCost,
                           ability.IsMeleeRange, ability.RangeMinYards, ability.RangeMaxYards,
-                          ability.CastTimeMs, ability.CooldownMs]);
+                          ability.CastTimeMs, ability.CooldownMs, stanceRequirement, equipRequirement]);
             }
         }
 
@@ -329,11 +331,12 @@ public sealed class BuildExtractor(
             "talent_ranks",
             ["talent_id", "rank_index", "spell_id", "name", "description", "icon_path",
              "is_ability", "power_type", "power_cost", "is_melee_range", "range_min_yards",
-             "range_max_yards", "cast_time_ms", "cooldown_ms"],
+             "range_max_yards", "cast_time_ms", "cooldown_ms", "stance_requirement", "equip_requirement"],
             rows,
             updateColumns: ["spell_id", "name", "description", "icon_path", "is_ability",
                             "power_type", "power_cost", "is_melee_range", "range_min_yards",
-                            "range_max_yards", "cast_time_ms", "cooldown_ms"]);
+                            "range_max_yards", "cast_time_ms", "cooldown_ms", "stance_requirement",
+                            "equip_requirement"]);
         cmd.ExecuteNonQuery();
         return rows.Count;
     }
@@ -399,6 +402,75 @@ public sealed class BuildExtractor(
 
         return new AbilityFields(true, powerType, powerCost, isMeleeRange, rangeMin, rangeMax,
                                   castTimeMs, cooldownMs > 0 ? cooldownMs : null);
+    }
+
+    /// <summary>Wowhead-tooltip-style "Requires X" line for a stance/shapeshift-form-locked
+    /// spell (e.g. Sweeping Strikes -> "Requires Battle Stance", Sharpened Claws -> "Requires
+    /// Cat Form, Bear Form, Dire Bear Form"). Spell.ShapeshiftMask bit N means "requires form
+    /// ID N+1" (the standard WoW 1-based-ID/0-based-bit convention, same as ChrClasses'
+    /// classMask) - resolved against the real SpellShapeshiftForm.dbc names, not a hardcoded
+    /// enum, so it can never drift from what a given build's client actually calls that form.
+    /// Verified against all 5 real talents from the initial request (Feline Swiftness ->
+    /// "Cat Form", Sharpened Claws -> "Cat Form, Bear Form, Dire Bear Form", Blood Frenzy ->
+    /// "Cat Form", Sweeping Strikes -> "Battle Stance"), cross-checked against every row of
+    /// 1.12.1.5875's real SpellShapeshiftForm.dbc and the live wowhead tooltip text for each
+    /// spell - see gotchas.md. Applies whether or not the spell is itself an "active ability"
+    /// (all 4 of the form-restricted examples above are passives).
+    /// Deliberately NOT reading Spell.ShapeshiftExclude - no talent in the initial verification
+    /// set uses it, and guessing its display wording without a real example to check against
+    /// would risk exactly the kind of unverified text this project avoids.</summary>
+    private string? ResolveStanceRequirement(SpellRecord spell)
+    {
+        if (spell.ShapeshiftMask == 0)
+            return null;
+
+        var names = new List<string>();
+        for (var bit = 0; bit < 32; bit++)
+        {
+            if ((spell.ShapeshiftMask & (1 << bit)) == 0) continue;
+
+            var form = dbcClient.GetShapeshiftForm(build, bit + 1);
+            if (form is not null && !string.IsNullOrEmpty(form.Name))
+                names.Add(form.Name);
+        }
+
+        return names.Count > 0 ? $"Requires {string.Join(", ", names)}" : null;
+    }
+
+    /// <summary>Wowhead-tooltip-style "Requires X" line for an equipped-item-locked spell,
+    /// covering exactly the three real patterns verified against this build's data: a generic
+    /// "any melee weapon" requirement (Concussion Blow, spell 12809: EquippedItemClass=2/
+    /// Weapon, EquippedItemSubclass=0x0002A5F3 - every non-ranged, non-wand weapon subclass
+    /// bit: Axe/Axe2H/Mace/Mace2H/Polearm/Sword/Sword2H/Staff/Fist/Dagger/Spear, matching the
+    /// live wowhead text "Requires Melee Weapon" exactly), a ranged weapon requirement (Aimed
+    /// Shot spell 19434 and Wyvern Sting spell 19386, both EquippedItemClass=2/Weapon,
+    /// EquippedItemSubclass=0x0004000C - Bow/Gun/Crossbow, matching "Requires Ranged Weapon"),
+    /// and a shield requirement (Shield Slam, spell 23922: EquippedItemClass=4/Armor,
+    /// EquippedItemSubclass bit 6 = Shield). Deliberately an exact-mask match for both weapon
+    /// cases (not "any melee/ranged bit set") and a single-bit check for the shield case,
+    /// rather than a looser heuristic: only these three combinations have a verified real
+    /// tooltip string behind them, and printing a guessed label for some other
+    /// EquippedItemClass/Subclass combination this dataset hasn't hit yet would be exactly the
+    /// kind of unverified text this project avoids (see ResolveStanceRequirement's
+    /// ShapeshiftExclude note, same reasoning).</summary>
+    private static string? ResolveEquipRequirement(SpellRecord spell)
+    {
+        const int ItemClassWeapon = 2;
+        const int ItemClassArmor = 4;
+        const int MeleeWeaponSubclassMask = 0x0002A5F3;
+        const int RangedWeaponSubclassMask = 0x0004000C;
+        const int ShieldSubclassBit = 0x40;
+
+        if (spell.EquippedItemClass == ItemClassWeapon && spell.EquippedItemSubclass == MeleeWeaponSubclassMask)
+            return "Requires Melee Weapon";
+
+        if (spell.EquippedItemClass == ItemClassWeapon && spell.EquippedItemSubclass == RangedWeaponSubclassMask)
+            return "Requires Ranged Weapon";
+
+        if (spell.EquippedItemClass == ItemClassArmor && (spell.EquippedItemSubclass & ShieldSubclassBit) != 0)
+            return "Requires Shield";
+
+        return null;
     }
 
     private (int upserted, int skipped) UpsertPrerequisites(Dictionary<int, int> talentIdMap, IReadOnlyList<TalentRecord> talents)

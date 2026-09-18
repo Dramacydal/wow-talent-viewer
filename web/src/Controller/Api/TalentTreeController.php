@@ -84,6 +84,8 @@ class TalentTreeController extends AbstractController
                                     'rangeMaxYards' => $rank->getRangeMaxYards(),
                                     'castTimeMs' => $rank->getCastTimeMs(),
                                     'cooldownMs' => $rank->getCooldownMs(),
+                                    'stanceRequirement' => $rank->getStanceRequirement(),
+                                    'equipRequirement' => $rank->getEquipRequirement(),
                                 ],
                                 $talent->getRanks()->toArray(),
                             ),

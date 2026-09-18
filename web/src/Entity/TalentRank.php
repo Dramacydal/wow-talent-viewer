@@ -90,6 +90,19 @@ class TalentRank
     #[ORM\Column(nullable: true)]
     private ?int $cooldownMs = null;
 
+    /** Wowhead-tooltip-style "Requires Cat Form" / "Requires Cat Form, Bear Form, Dire Bear
+     * Form" line, resolved from Spell.ShapeshiftMask against the real SpellShapeshiftForm.dbc
+     * names for this build - see BuildExtractor.ResolveStanceRequirement. Null when the spell
+     * has no stance/form restriction. */
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $stanceRequirement = null;
+
+    /** Wowhead-tooltip-style "Requires Melee Weapon" / "Requires Shield" line - see
+     * BuildExtractor.ResolveEquipRequirement. Null when the spell has no equipped-item
+     * restriction, or one this project hasn't verified real display text for yet. */
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $equipRequirement = null;
+
     public function getId(): ?int
     {
         return $this->id;
@@ -259,6 +272,30 @@ class TalentRank
     public function setCooldownMs(?int $cooldownMs): static
     {
         $this->cooldownMs = $cooldownMs;
+
+        return $this;
+    }
+
+    public function getStanceRequirement(): ?string
+    {
+        return $this->stanceRequirement;
+    }
+
+    public function setStanceRequirement(?string $stanceRequirement): static
+    {
+        $this->stanceRequirement = $stanceRequirement;
+
+        return $this;
+    }
+
+    public function getEquipRequirement(): ?string
+    {
+        return $this->equipRequirement;
+    }
+
+    public function setEquipRequirement(?string $equipRequirement): static
+    {
+        $this->equipRequirement = $equipRequirement;
 
         return $this;
     }

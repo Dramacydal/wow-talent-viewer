@@ -142,6 +142,12 @@ const vueApp = createApp({
                 rangeText: formatAbilityRange(mainRank),
                 castTimeText: formatAbilityCastTime(mainRank),
                 cooldownText: formatAbilityCooldown(mainRank),
+                // Wowhead-tooltip-style "Requires X" lines - stance/form (e.g. "Requires
+                // Battle Stance") and equipped-item (e.g. "Requires Melee Weapon") are
+                // independent restrictions a spell can carry regardless of whether it's an
+                // "active ability" (Sharpened Claws etc. are passives that still show one) -
+                // see BuildExtractor.ResolveStanceRequirement/ResolveEquipRequirement.
+                requirementLines: [mainRank.stanceRequirement, mainRank.equipRequirement].filter(Boolean),
             };
         },
     },
@@ -502,6 +508,7 @@ const vueApp = createApp({
                         <span v-if="tooltip.cooldownText">{{ tooltip.cooldownText }}</span>
                     </div>
                 </template>
+                <div v-for="line in tooltip.requirementLines" :key="line" class="tt-tooltip-requirement">{{ line }}</div>
                 <div class="tt-tooltip-desc">{{ tooltip.description }}</div>
                 <template v-if="tooltip.nextDescription">
                     <div class="tt-tooltip-next-label">Next rank:</div>

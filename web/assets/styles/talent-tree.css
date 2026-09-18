@@ -478,6 +478,15 @@ body {
     color: #ffd100;
 }
 
+/* Matches wowhead's own ".wowhead-tooltip-requirements" class exactly (checked via
+   getComputedStyle on the live tooltip HTML for Sharpened Claws/Concussion Blow) - plain
+   white, not the gold used for the description text below it. */
+.tt-tooltip-requirement {
+    color: #fff;
+    font-size: 11px;
+    margin-bottom: 4px;
+}
+
 .tt-tooltip-next-label {
     color: var(--tt-text);
     margin-top: 6px;

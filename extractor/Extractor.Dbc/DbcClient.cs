@@ -144,6 +144,8 @@ public sealed class DbcClient
         var storage = Load("Spell", build, global::DBCD.Locale.EnUS);
         var hasMaxTargetLevel = storage.AvailableColumns.Contains("MaxTargetLevel");
         var hasChainTargets = storage.AvailableColumns.Contains("EffectChainTargets");
+        var hasShapeshiftExclude = storage.AvailableColumns.Contains("ShapeshiftExclude");
+        var hasEquippedItemInvTypes = storage.AvailableColumns.Contains("EquippedItemInvTypes");
 
         return new SpellRecord(
             Id: id,
@@ -169,7 +171,12 @@ public sealed class DbcClient
             RangeIndex: row.Field<int>("RangeIndex"),
             CastingTimeIndex: row.Field<int>("CastingTimeIndex"),
             RecoveryTime: row.Field<int>("RecoveryTime"),
-            CategoryRecoveryTime: row.Field<int>("CategoryRecoveryTime"));
+            CategoryRecoveryTime: row.Field<int>("CategoryRecoveryTime"),
+            ShapeshiftMask: row.Field<int>("ShapeshiftMask"),
+            ShapeshiftExclude: hasShapeshiftExclude ? row.Field<int>("ShapeshiftExclude") : null,
+            EquippedItemClass: row.Field<int>("EquippedItemClass"),
+            EquippedItemSubclass: row.Field<int>("EquippedItemSubclass"),
+            EquippedItemInvTypes: hasEquippedItemInvTypes ? row.Field<int>("EquippedItemInvTypes") : null);
     }
 
     /// <summary>Raw Spell.Attributes bitmask (the first of several Attributes/AttributesEx*
@@ -228,6 +235,26 @@ public sealed class DbcClient
     {
         var index = LoadIndexedById("SpellCastTimes", build);
         return index.TryGetValue(castingTimeIndex, out var row) ? row.Field<int>("Base") : null;
+    }
+
+    /// <summary>SpellShapeshiftForm.dbc's real localized name for a form ID (1-based, matching
+    /// the bit convention in Spell.ShapeshiftMask - see SpellShapeshiftFormRecord).</summary>
+    public SpellShapeshiftFormRecord? GetShapeshiftForm(string build, int id)
+    {
+        var index = LoadIndexedById("SpellShapeshiftForm", build, global::DBCD.Locale.EnUS);
+        return index.TryGetValue(id, out var row) ? new SpellShapeshiftFormRecord(id, row.Field<string>("Name_lang")) : null;
+    }
+
+    /// <summary>Every SpellShapeshiftForm.dbc row for the build, for diagnostics/verification
+    /// (see spike-shapeshift-forms in Extractor.Cli) - not used by the extraction pipeline
+    /// itself, which resolves one form at a time via GetShapeshiftForm.</summary>
+    public IReadOnlyList<SpellShapeshiftFormRecord> GetAllShapeshiftForms(string build)
+    {
+        var storage = Load("SpellShapeshiftForm", build, global::DBCD.Locale.EnUS);
+        return storage.Values
+            .Select(row => new SpellShapeshiftFormRecord(row.Field<int>("ID"), row.Field<string>("Name_lang")))
+            .OrderBy(r => r.Id)
+            .ToList();
     }
 
     private static int[] ReadIntArray(DBCD.DBCDRow row, string fieldName, int count)

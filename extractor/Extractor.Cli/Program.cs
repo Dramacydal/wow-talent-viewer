@@ -43,6 +43,8 @@ return args[0] switch
     "dump-spell-ranges" => DumpSpellRanges(args[1], args[2]),
     "spike-ability-fields" => SpikeAbilityFields(args[1], args[2], int.Parse(args[3])),
     "spike-spell-full" => SpikeSpellFull(args[1], args[2], int.Parse(args[3])),
+    "dump-shapeshift-forms" => DumpShapeshiftForms(args[1], args[2]),
+    "dump-equip-patterns" => DumpEquipPatterns(args[1], args[2]),
     _ => Fail($"Unknown command: {args[0]}")
 };
 
@@ -404,6 +406,50 @@ static int SpikeSpellFull(string clientDir, string build, int spellId)
     Console.WriteLine($"  Attributes=0x{spell.Attributes:X8} PowerType={spell.PowerType} ManaCost={spell.ManaCost}");
     Console.WriteLine($"  RangeIndex={spell.RangeIndex} CastingTimeIndex={spell.CastingTimeIndex}");
     Console.WriteLine($"  RecoveryTime={spell.RecoveryTime} CategoryRecoveryTime={spell.CategoryRecoveryTime}");
+    Console.WriteLine($"  ShapeshiftMask=0x{spell.ShapeshiftMask:X8} ShapeshiftExclude={(spell.ShapeshiftExclude is null ? "n/a" : $"0x{spell.ShapeshiftExclude:X8}")}");
+    Console.WriteLine($"  EquippedItemClass={spell.EquippedItemClass} EquippedItemSubclass=0x{spell.EquippedItemSubclass:X8} EquippedItemInvTypes={(spell.EquippedItemInvTypes is null ? "n/a" : $"0x{spell.EquippedItemInvTypes:X8}")}");
+
+    return 0;
+}
+
+static int DumpShapeshiftForms(string clientDir, string build)
+{
+    using var archive = OpenPatchedDbc(clientDir);
+    var client = MakeDbcClient(archive);
+
+    foreach (var form in client.GetAllShapeshiftForms(build))
+        Console.WriteLine($"  id={form.Id} bit={form.Id - 1} (mask 0x{1 << (form.Id - 1):X8}) name=\"{form.Name}\"");
+
+    return 0;
+}
+
+/// <summary>Every distinct (EquippedItemClass, EquippedItemSubclass) pair across every real
+/// spell referenced by any talent rank in this build - to check whether ResolveEquipRequirement
+/// should match a class-2 (Weapon) subclass mask exactly, or by intersection, before deciding
+/// which (see the exact-match-vs-narrower-real-restriction question this was written to
+/// answer).</summary>
+static int DumpEquipPatterns(string clientDir, string build)
+{
+    using var archive = OpenPatchedDbc(clientDir);
+    var client = MakeDbcClient(archive);
+
+    var talents = client.ReadTalents(build);
+    var seen = new Dictionary<(int, int), (int spellId, string name)>();
+    foreach (var talent in talents)
+    {
+        foreach (var spellId in talent.SpellRanks)
+        {
+            if (spellId == 0) continue;
+            var spell = client.GetSpell(build, spellId);
+            if (spell is null || spell.EquippedItemClass == -1) continue;
+
+            var key = (spell.EquippedItemClass, spell.EquippedItemSubclass);
+            seen.TryAdd(key, (spellId, spell.Name));
+        }
+    }
+
+    foreach (var ((itemClass, subclass), (spellId, name)) in seen.OrderBy(kv => kv.Key))
+        Console.WriteLine($"  class={itemClass} subclass=0x{subclass:X8}  e.g. spell {spellId} \"{name}\"");
 
     return 0;
 }
