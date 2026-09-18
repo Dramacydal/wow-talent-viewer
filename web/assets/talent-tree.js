@@ -129,17 +129,18 @@ const vueApp = createApp({
         prereqsMet(talent) {
             return talent.prerequisites.every((p) => (this.spent[p.requiresTalentId] || 0) >= p.requiresRank);
         },
-        // "Why is this locked" lines for the tooltip - the SHORTFALL (how many more points
-        // are still needed), not the absolute requirement: e.g. a prereq needing 3/3 with
-        // 2 already spent shows "1 more", not "3". Tier shortfall first (if any), then one
-        // line per unmet prerequisite - matches the order a player would fix them in (open
-        // the tier first, then the specific prereq).
+        // "Why is this locked" lines for the tooltip. Tier line shows the ABSOLUTE
+        // requirement (total points needed in the tab) - unlike the prereq lines below, this
+        // one is not a shortfall. Prereq lines show the SHORTFALL instead (how many more
+        // points are still needed): e.g. a prereq needing 3/3 with 2 already spent shows "1
+        // more", not "3". Tier line first (if any), then one line per unmet prerequisite -
+        // matches the order a player would fix them in (open the tier first, then the
+        // specific prereq).
         lockReasons(tab, talent) {
             const reasons = [];
             const tierNeeded = talent.tier * 5;
-            const tierShortfall = tierNeeded - this.totalSpentInTab(tab);
-            if (tierShortfall > 0) {
-                reasons.push(`Needs ${tierShortfall} more point${tierShortfall === 1 ? '' : 's'} in ${tab.name} Talents`);
+            if (this.totalSpentInTab(tab) < tierNeeded) {
+                reasons.push(`Requires ${tierNeeded} points in ${tab.name} Talents`);
             }
             for (const prereq of talent.prerequisites) {
                 const have = this.spent[prereq.requiresTalentId] || 0;
