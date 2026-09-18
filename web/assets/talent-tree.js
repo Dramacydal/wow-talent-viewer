@@ -148,7 +148,11 @@ const vueApp = createApp({
                 if (shortfall <= 0) continue;
                 const prereqTalent = tab.talents.find((t) => t.id === prereq.requiresTalentId);
                 const prereqName = prereqTalent ? prereqTalent.ranks[0].name : 'Unknown Talent';
-                reasons.push(`Needs ${shortfall} more point${shortfall === 1 ? '' : 's'} in ${prereqName}`);
+                // Absolute requirement if nothing spent yet (matches the tier line's style);
+                // shortfall only once the player has actually started investing in it.
+                reasons.push(have === 0
+                    ? `Requires ${prereq.requiresRank} point${prereq.requiresRank === 1 ? '' : 's'} in ${prereqName}`
+                    : `Needs ${shortfall} more point${shortfall === 1 ? '' : 's'} in ${prereqName}`);
             }
             return reasons;
         },
