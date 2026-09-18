@@ -42,6 +42,7 @@ return args[0] switch
     "find-spell-attr" => FindSpellAttr(args[1], args[2], args[3], args[4], args[5]),
     "dump-spell-ranges" => DumpSpellRanges(args[1], args[2]),
     "spike-ability-fields" => SpikeAbilityFields(args[1], args[2], int.Parse(args[3])),
+    "spike-spell-full" => SpikeSpellFull(args[1], args[2], int.Parse(args[3])),
     _ => Fail($"Unknown command: {args[0]}")
 };
 
@@ -372,6 +373,36 @@ static int SpikeAbilityFields(string clientDir, string build, int spellId)
     Console.WriteLine($"  PowerType={spell.PowerType} ManaCost={spell.ManaCost}");
     Console.WriteLine($"  RangeIndex={spell.RangeIndex} -> {(range is null ? "NOT FOUND" : $"min={range.MinRange} max={range.MaxRange} flags=0x{range.Flags:X} isMelee={range.IsMelee}")}");
     Console.WriteLine($"  CastingTimeIndex={spell.CastingTimeIndex} -> {(castTimeMs is null ? "NOT FOUND" : $"{castTimeMs} ms")}");
+    Console.WriteLine($"  RecoveryTime={spell.RecoveryTime} CategoryRecoveryTime={spell.CategoryRecoveryTime}");
+
+    return 0;
+}
+
+// One-off: dump every SpellRecord field for a spell, to debug an escape-sequence formatting
+// bug ($t reading EffectAmplitude=0 for a totem's periodic-tick spell - see gotchas.md).
+static int SpikeSpellFull(string clientDir, string build, int spellId)
+{
+    using var archive = OpenPatchedDbc(clientDir);
+    var client = MakeDbcClient(archive);
+
+    var spell = client.GetSpell(build, spellId);
+    if (spell is null)
+        return Fail($"Spell {spellId} not found");
+
+    var durationMs = client.GetSpellDurationMs(build, spell.DurationIndex);
+
+    Console.WriteLine($"{spell.Name} (spell {spellId}):");
+    Console.WriteLine($"  EffectBasePoints=[{string.Join(",", spell.EffectBasePoints)}]");
+    Console.WriteLine($"  EffectAuraPeriod=[{string.Join(",", spell.EffectAuraPeriod)}]");
+    Console.WriteLine($"  EffectAmplitude=[{string.Join(",", spell.EffectAmplitude)}]");
+    Console.WriteLine($"  EffectRadiusIndex=[{string.Join(",", spell.EffectRadiusIndex)}]");
+    Console.WriteLine($"  EffectMiscValue=[{string.Join(",", spell.EffectMiscValue)}]");
+    Console.WriteLine($"  EffectPointsPerCombo=[{string.Join(",", spell.EffectPointsPerCombo)}]");
+    Console.WriteLine($"  DurationIndex={spell.DurationIndex} -> {(durationMs is null ? "NOT FOUND" : $"{durationMs} ms")}");
+    Console.WriteLine($"  ProcChance={spell.ProcChance} ProcCharges={spell.ProcCharges} CumulativeAura={spell.CumulativeAura}");
+    Console.WriteLine($"  MaxTargetLevel={spell.MaxTargetLevel?.ToString() ?? "n/a"} EffectChainTargets={(spell.EffectChainTargets is null ? "n/a" : string.Join(",", spell.EffectChainTargets))}");
+    Console.WriteLine($"  Attributes=0x{spell.Attributes:X8} PowerType={spell.PowerType} ManaCost={spell.ManaCost}");
+    Console.WriteLine($"  RangeIndex={spell.RangeIndex} CastingTimeIndex={spell.CastingTimeIndex}");
     Console.WriteLine($"  RecoveryTime={spell.RecoveryTime} CategoryRecoveryTime={spell.CategoryRecoveryTime}");
 
     return 0;

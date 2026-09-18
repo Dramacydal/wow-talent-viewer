@@ -152,6 +152,7 @@ public sealed class DbcClient
             Description: row.Field<string>("Description_lang"),
             SpellIconId: row.Field<int>("SpellIconID"),
             EffectBasePoints: ReadIntArray(row, "EffectBasePoints", 3),
+            EffectAuraPeriod: ReadIntArray(row, "EffectAuraPeriod", 3),
             EffectAmplitude: ReadFloatArray(row, "EffectAmplitude", 3),
             EffectRadiusIndex: ReadIntArray(row, "EffectRadiusIndex", 3),
             EffectMiscValue: ReadIntArray(row, "EffectMiscValue", 3),

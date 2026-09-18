@@ -80,7 +80,7 @@ public sealed partial class SpellDescriptionFormatter(DbcClient dbcClient, strin
             'a' => dbcClient.GetSpellRadiusYards(build, spell.EffectRadiusIndex[effIdx]),
             'q' => Math.Abs(spell.EffectMiscValue[effIdx]),
             'b' => Math.Abs(spell.EffectPointsPerCombo[effIdx]),
-            't' => spell.EffectAmplitude[effIdx] / 1000.0,
+            't' => spell.EffectAuraPeriod[effIdx] / 1000.0,
             'n' => spell.ProcCharges,
             'u' => spell.CumulativeAura,
             'v' => spell.MaxTargetLevel,
@@ -132,13 +132,24 @@ public sealed partial class SpellDescriptionFormatter(DbcClient dbcClient, strin
 
     /// <summary>Total effect value over a periodic effect's full duration — QSpellWork's
     /// getRealDuration() * (basePoints+1): duration divided by tick period (defaulting to a
-    /// 5-second tick if the effect isn't periodic), times the per-tick amount.</summary>
+    /// 5-second tick if the effect isn't periodic), times the per-tick amount.
+    ///
+    /// The tick period is Spell.EffectAuraPeriod (an int, ms) - NOT EffectAmplitude (a float,
+    /// unrelated to timing). QSpellWork's own C++ struct calls the tick-period field
+    /// "EffectAmplitude" (declared as an int, right after EffectApplyAuraName) because their
+    /// reverse-engineered layout has no separate EffectAuraPeriod field at all - the real
+    /// (float) Amplitude value landed under a different name in their code
+    /// ("EffectMultipleValue"). WoWDBDefs' newer, cross-referenced schema splits these two
+    /// correctly. Caught on real data: Mana Tide Totem's raw description reads
+    /// "$16191t1 seconds" - spell 16191's EffectAmplitude is 0 (always has been, it's not a
+    /// periodic-timing field), while EffectAuraPeriod is 3000ms, exactly the real, known
+    /// 3-second tick. See .claude-docs/gotchas.md.</summary>
     private double? GetPeriodicTotal(SpellRecord spell, int effIdx)
     {
         var durationMs = dbcClient.GetSpellDurationMs(build, spell.DurationIndex);
         if (durationMs is null) return null;
 
-        var tickMs = spell.EffectAmplitude[effIdx] > 0 ? spell.EffectAmplitude[effIdx] : 5000;
+        var tickMs = spell.EffectAuraPeriod[effIdx] > 0 ? spell.EffectAuraPeriod[effIdx] : 5000;
         var ticks = durationMs.Value / tickMs;
         return ticks * (spell.EffectBasePoints[effIdx] + 1);
     }
