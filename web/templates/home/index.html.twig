@@ -16,25 +16,52 @@
             warrior: 'WAR', paladin: 'PAL', hunter: 'HUN', rogue: 'ROG', priest: 'PRI',
             shaman: 'SHA', mage: 'MAG', warlock: 'LCK', druid: 'DRU',
         } %}
-        <div class="class-row">
-            {% for class in availableClasses %}
+        {% set initialSlugs = availableSlugsByBuildLabel[selectedBuild.label] ?? [] %}
+        <div id="home-class-row" class="class-row">
+            {% for class in allClasses %}
                 <a class="class-icon class-icon--{{ class.slug }}"
+                   data-slug="{{ class.slug }}"
                    href="{{ path('talent_tree_page', { buildLabel: selectedBuild.label, classSlug: class.slug }) }}"
-                   title="{{ class.name }}">
+                   title="{{ class.name }}"
+                   {{ class.slug in initialSlugs ? '' : 'hidden' }}>
                     {% if class.iconPath %}
                         <img class="class-icon-img" src="/class-icons/{{ class.iconPath }}.png" alt="{{ class.name }}">
                     {% else %}
                         <span class="class-icon-label">{{ classAbbreviations[class.slug] ?? class.name|slice(0, 3)|upper }}</span>
                     {% endif %}
                 </a>
-            {% else %}
-                <p class="class-row-empty">No classes have talent data on this build.</p>
             {% endfor %}
+            <p id="home-class-row-empty" class="class-row-empty" {{ initialSlugs is empty ? '' : 'hidden' }}>No classes have talent data on this build.</p>
         </div>
     </main>
     <script>
-        document.getElementById('home-build-select').addEventListener('change', (e) => {
-            window.location.href = `/?build=${encodeURIComponent(e.target.value)}`;
-        });
+        (() => {
+            const availableSlugsByBuildLabel = {{ availableSlugsByBuildLabel|json_encode|raw }};
+            const select = document.getElementById('home-build-select');
+            const icons = Array.from(document.querySelectorAll('#home-class-row .class-icon'));
+            const emptyMessage = document.getElementById('home-class-row-empty');
+
+            function applyBuild(buildLabel) {
+                const slugs = new Set(availableSlugsByBuildLabel[buildLabel] || []);
+                let anyVisible = false;
+                for (const icon of icons) {
+                    const isAvailable = slugs.has(icon.dataset.slug);
+                    icon.hidden = !isAvailable;
+                    if (isAvailable) {
+                        anyVisible = true;
+                        icon.href = `/tree/${encodeURIComponent(buildLabel)}/${icon.dataset.slug}`;
+                    }
+                }
+                emptyMessage.hidden = anyVisible;
+            }
+
+            select.addEventListener('change', (e) => {
+                const buildLabel = e.target.value;
+                applyBuild(buildLabel);
+                const url = new URL(window.location.href);
+                url.searchParams.set('build', buildLabel);
+                history.replaceState(null, '', url);
+            });
+        })();
     </script>
 {% endblock %}

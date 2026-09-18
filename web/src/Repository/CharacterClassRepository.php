@@ -27,23 +27,33 @@ class CharacterClassRepository extends ServiceEntityRepository
             ->getResult();
     }
 
-    /** Classes that actually have at least one talent_tab in this build - not every class
-     * necessarily does on every build (see gotchas.md: e.g. Warrior's talents were orphaned
-     * on 0.7.0.3694, so it has zero real tabs there even though the ChrClasses row exists). */
-    public function findAvailableForBuild(ClientBuild $build): array
-    {
-        return $this->createQueryBuilder('c')
-            ->innerJoin(TalentTab::class, 'tab', 'WITH', 'tab.characterClass = c')
-            ->where('tab.clientBuild = :build')
-            ->setParameter('build', $build)
-            ->distinct()
-            ->orderBy('c.id', \SortDirection::Ascending)
-            ->getQuery()
-            ->getResult();
-    }
-
     public function findOneBySlug(string $slug): ?CharacterClass
     {
         return $this->findOneBy(['slug' => $slug]);
+    }
+
+    /** Every (build label, class slug) pair that has at least one talent_tab, across ALL
+     * builds at once - lets the landing page filter its class row client-side when the user
+     * switches builds, instead of round-tripping to the server (see .claude-docs/gotchas.md
+     * on why availability isn't just "all 9 classes" for every build).
+     *
+     * @return array<string, string[]> build label => class slugs available on it
+     */
+    public function findAvailableSlugsByBuildLabel(): array
+    {
+        $rows = $this->createQueryBuilder('c')
+            ->select('build.label AS buildLabel', 'c.slug AS classSlug')
+            ->innerJoin(TalentTab::class, 'tab', 'WITH', 'tab.characterClass = c')
+            ->innerJoin(ClientBuild::class, 'build', 'WITH', 'tab.clientBuild = build')
+            ->distinct()
+            ->getQuery()
+            ->getArrayResult();
+
+        $byBuild = [];
+        foreach ($rows as $row) {
+            $byBuild[$row['buildLabel']][] = $row['classSlug'];
+        }
+
+        return $byBuild;
     }
 }

@@ -27,7 +27,8 @@ class HomeController extends AbstractController
         return $this->render('home/index.html.twig', [
             'builds' => $allBuilds,
             'selectedBuild' => $selectedBuild,
-            'availableClasses' => $classes->findAvailableForBuild($selectedBuild),
+            'allClasses' => $classes->findAllOrderedById(),
+            'availableSlugsByBuildLabel' => $classes->findAvailableSlugsByBuildLabel(),
         ]);
     }
 

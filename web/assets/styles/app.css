@@ -60,6 +60,13 @@ body {
     text-decoration: none;
 }
 
+/* .class-icon's own `display: block` has the same specificity as the UA stylesheet's
+   `[hidden] { display: none }` and comes later in the cascade, so it silently wins and the
+   hidden attribute alone does nothing - needs an explicit override. */
+.class-icon[hidden] {
+    display: none;
+}
+
 .class-icon-label {
     display: flex;
     align-items: center;
