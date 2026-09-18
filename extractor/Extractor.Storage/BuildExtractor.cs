@@ -343,18 +343,29 @@ public sealed class BuildExtractor(
         float? RangeMinYards, float? RangeMaxYards, int? CastTimeMs, int? CooldownMs);
 
     /// <summary>A talent "grants a usable ability" (shows up in the spellbook, castable) iff
-    /// SPELL_ATTR_IS_ABILITY (0x10) is set and SPELL_ATTR_PASSIVE (0x40) is NOT - verified
-    /// against real vanilla data on every class, see .claude-docs/gotchas.md. Only for those,
-    /// resolve the wowhead-tooltip-style cost/range/cast-time/cooldown fields; everything
-    /// else stays null (not just zero) so the frontend can tell "not an ability" apart from
-    /// "an ability with 0 cost".</summary>
+    /// SPELL_ATTR_PASSIVE (0x40) is NOT set AND SPELL_ATTR_DO_NOT_DISPLAY (0x80, "Hidden in
+    /// Spellbook, Aura Icon, Combat Log" - see cmangos-classic SpellDefines.h) is NOT set.
+    /// SPELL_ATTR_IS_ABILITY (0x10) is deliberately NOT part of the criterion, despite the
+    /// name suggesting otherwise: it happens to be set on every Warrior/Rogue active-use
+    /// talent (which is why an earlier version of this rule, requiring 0x10 too, looked
+    /// correct against just those two classes), but plenty of real, castable Mage/Paladin/
+    /// Druid abilities never set it - e.g. Presence of Mind, Pyroblast, Ice Barrier, Holy
+    /// Shock, Consecration, Nature's Grasp, Insect Swarm all have 0x40 and 0x10 BOTH clear.
+    /// The DO_NOT_DISPLAY exclusion was needed separately: Shaman's "Parry" and "Two-Handed
+    /// Axes and Maces" (genuinely passive weapon-skill/defense talents) clear 0x40 too, but
+    /// carry 0x80 - they're implemented as real spells internally but deliberately hidden
+    /// from the spellbook, which is exactly what DO_NOT_DISPLAY means. Verified across every
+    /// class's real data before/after each fix, see .claude-docs/gotchas.md. Only for
+    /// qualifying ranks, resolve the wowhead-tooltip-style cost/range/cast-time/cooldown
+    /// fields; everything else stays null (not just zero) so the frontend can tell "not an
+    /// ability" apart from "an ability with 0 cost".</summary>
     private AbilityFields ResolveAbilityFields(SpellRecord spell)
     {
         const int SpellAttrPassive = 0x40;
-        const int SpellAttrIsAbility = 0x10;
+        const int SpellAttrDoNotDisplay = 0x80;
         const int PowerTypeRage = 1;
 
-        var isAbility = (spell.Attributes & SpellAttrIsAbility) != 0 && (spell.Attributes & SpellAttrPassive) == 0;
+        var isAbility = (spell.Attributes & SpellAttrPassive) == 0 && (spell.Attributes & SpellAttrDoNotDisplay) == 0;
         if (!isAbility)
             return new AbilityFields(false, null, null, null, null, null, null, null);
 
