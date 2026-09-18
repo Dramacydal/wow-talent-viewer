@@ -443,6 +443,12 @@ body {
     border-top: 1px solid var(--tt-panel-border);
 }
 
+.tt-tooltip-lock-reason {
+    color: #ff4040;
+    margin-top: 4px;
+    font-size: 11px;
+}
+
 .tt-tooltip-actions {
     color: #1eff00;
     margin-top: 8px;

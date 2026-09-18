@@ -74,6 +74,7 @@ const vueApp = createApp({
         // where there's nothing left to preview).
         tooltip() {
             if (!this.hoveredTalent) return null;
+            const tab = this.hoveredTab;
             const talent = this.hoveredTalent;
             const spent = this.spent[talent.id] || 0;
             const mainRank = talent.ranks[spent === 0 ? 0 : spent - 1];
@@ -85,7 +86,8 @@ const vueApp = createApp({
                 maxRank: talent.maxRank,
                 description: mainRank.description,
                 nextDescription: nextRank?.description ?? null,
-                canLearn: this.canSpend(this.hoveredTab, talent),
+                canLearn: this.canSpend(tab, talent),
+                lockReasons: this.lockReasons(tab, talent),
                 x: this.tooltipPos.x,
                 y: this.tooltipPos.y,
             };
@@ -126,6 +128,28 @@ const vueApp = createApp({
         },
         prereqsMet(talent) {
             return talent.prerequisites.every((p) => (this.spent[p.requiresTalentId] || 0) >= p.requiresRank);
+        },
+        // "Why is this locked" lines for the tooltip - the SHORTFALL (how many more points
+        // are still needed), not the absolute requirement: e.g. a prereq needing 3/3 with
+        // 2 already spent shows "1 more", not "3". Tier shortfall first (if any), then one
+        // line per unmet prerequisite - matches the order a player would fix them in (open
+        // the tier first, then the specific prereq).
+        lockReasons(tab, talent) {
+            const reasons = [];
+            const tierNeeded = talent.tier * 5;
+            const tierShortfall = tierNeeded - this.totalSpentInTab(tab);
+            if (tierShortfall > 0) {
+                reasons.push(`Needs ${tierShortfall} more point${tierShortfall === 1 ? '' : 's'} in ${tab.name} Talents`);
+            }
+            for (const prereq of talent.prerequisites) {
+                const have = this.spent[prereq.requiresTalentId] || 0;
+                const shortfall = prereq.requiresRank - have;
+                if (shortfall <= 0) continue;
+                const prereqTalent = tab.talents.find((t) => t.id === prereq.requiresTalentId);
+                const prereqName = prereqTalent ? prereqTalent.ranks[0].name : 'Unknown Talent';
+                reasons.push(`Needs ${shortfall} more point${shortfall === 1 ? '' : 's'} in ${prereqName}`);
+            }
+            return reasons;
         },
         canSpend(tab, talent) {
             return (this.spent[talent.id] || 0) < talent.maxRank && this.isUnlocked(tab, talent) && this.prereqsMet(talent);
@@ -376,6 +400,7 @@ const vueApp = createApp({
                     <div class="tt-tooltip-next-label">Next rank:</div>
                     <div class="tt-tooltip-desc">{{ tooltip.nextDescription }}</div>
                 </template>
+                <div v-for="reason in tooltip.lockReasons" :key="reason" class="tt-tooltip-lock-reason">{{ reason }}</div>
                 <div v-if="tooltip.canLearn" class="tt-tooltip-actions">
                     Click to learn<template v-if="tooltip.maxRank > 1"> &middot; Shift-click to learn all ranks</template>
                 </div>
