@@ -164,6 +164,16 @@ public sealed class DbcClient
             EffectChainTargets: hasChainTargets ? ReadIntArray(row, "EffectChainTargets", 3) : null);
     }
 
+    /// <summary>Raw Spell.Attributes bitmask (the first of several Attributes/AttributesEx*
+    /// flag fields - see dbd-definitions/Spell.dbd), e.g. for checking SPELL_ATTR_PASSIVE
+    /// (0x40). Not part of SpellRecord - not needed for description formatting, only for
+    /// one-off diagnostics. Returns null if the spell doesn't exist.</summary>
+    public int? GetSpellAttributes(string build, int id)
+    {
+        var index = LoadIndexedById("Spell", build, global::DBCD.Locale.EnUS);
+        return index.TryGetValue(id, out var row) ? row.Field<int>("Attributes") : null;
+    }
+
     public SpellIconRecord? GetSpellIcon(string build, int id)
     {
         var index = LoadIndexedById("SpellIcon", build);

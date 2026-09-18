@@ -39,6 +39,7 @@ return args[0] switch
     "extract-icon" => ExtractIcon(args[1], args[2], int.Parse(args[3]), args[4], args[5]),
     "extract-build" => ExtractBuild(args[1], args[2], args[3], args[4]),
     "extract-class-icons" => ExtractClassIcons(args[1], args[2], args[3]),
+    "find-spell-attr" => FindSpellAttr(args[1], args[2], args[3], args[4], args[5]),
     _ => Fail($"Unknown command: {args[0]}")
 };
 
@@ -469,6 +470,68 @@ static int ExtractBuild(string clientDir, string build, string envFilePath, stri
                        $"ranks={summary.RanksUpserted}, " +
                        $"prereqs={summary.PrerequisitesUpserted} ({summary.PrerequisitesSkippedOrphaned} skipped)");
 
+    return 0;
+}
+
+// One-off diagnostic: does any talent rank's spell for a given class/build have one of the
+// given Spell.Attributes bits set (e.g. SPELL_ATTR_PASSIVE=0x40, SPELL_ATTR_IS_ABILITY=0x10)?
+// Reads the talent list from OUR OWN database (already extracted, has names/ranks/tab
+// grouping ready) and cross-checks Attributes against the live client via DBCD - not from
+// Spell.dbc data cached in the DB, since Attributes isn't part of SpellRecord (see
+// DbcClient.GetSpellAttributes docblock).
+static int FindSpellAttr(string clientDir, string build, string envFilePath, string classSlug, string hexFlagsCsv)
+{
+    var flags = hexFlagsCsv.Split(',').Select(s => Convert.ToInt32(s.Trim(), 16)).ToArray();
+
+    var connectionString = EnvFileConnectionString.ReadMySqlConnectionString(envFilePath);
+    using var connection = new MySqlConnection(connectionString);
+    connection.Open();
+
+    var rows = new List<(int SpellId, string Name, int RankIndex, string TabName)>();
+    using (var cmd = connection.CreateCommand())
+    {
+        cmd.CommandText = """
+            SELECT tr.spell_id, tr.name, tr.rank_index, tt.name AS tab_name
+            FROM talent_ranks tr
+            JOIN talents t ON t.id = tr.talent_id
+            JOIN talent_tabs tt ON tt.id = t.talent_tab_id
+            JOIN client_builds cb ON cb.id = tt.client_build_id
+            JOIN classes c ON c.id = tt.character_class_id
+            WHERE cb.label = @build AND c.slug = @slug
+            ORDER BY tt.order_index, tt.id, t.tier, t.column_index, tr.rank_index
+            """;
+        cmd.Parameters.AddWithValue("@build", build);
+        cmd.Parameters.AddWithValue("@slug", classSlug);
+        using var reader = cmd.ExecuteReader();
+        while (reader.Read())
+            rows.Add((reader.GetInt32(0), reader.GetString(1), reader.GetInt32(2), reader.GetString(3)));
+    }
+
+    if (rows.Count == 0)
+        return Fail($"No talent ranks found for class \"{classSlug}\" on build \"{build}\" - wrong slug/build, or not extracted yet?");
+
+    using var archive = OpenPatchedDbc(clientDir);
+    var client = MakeDbcClient(archive);
+
+    var matchCount = 0;
+    foreach (var (spellId, name, rankIndex, tabName) in rows)
+    {
+        var attrs = client.GetSpellAttributes(build, spellId);
+        if (attrs is null)
+        {
+            Console.WriteLine($"[{tabName}] {name} (rank {rankIndex}, spell {spellId}): NOT FOUND in Spell.dbc");
+            continue;
+        }
+
+        var matched = flags.Where(f => (attrs.Value & f) != 0).ToArray();
+        if (matched.Length == 0) continue;
+
+        matchCount++;
+        var matchedHex = string.Join(", ", matched.Select(f => $"0x{f:X8}"));
+        Console.WriteLine($"[{tabName}] {name} (rank {rankIndex}, spell {spellId}): Attributes=0x{attrs.Value:X8} matches [{matchedHex}]");
+    }
+
+    Console.WriteLine($"--- {matchCount} of {rows.Count} talent ranks matched ---");
     return 0;
 }
 
