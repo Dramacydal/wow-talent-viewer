@@ -166,6 +166,18 @@ createApp({
         cornerStyle(url) {
             return { backgroundImage: url ? `url(${url})` : 'none' };
         },
+        // .tt-tab-art's height must be set EXPLICITLY (not left to auto/content-driven
+        // block flow) - its 4 corner children are position:absolute with percentage
+        // heights, and a percentage height on an absolutely-positioned element only
+        // resolves against a containing block that itself has a definite (non-auto)
+        // height; against 'auto' it computes to 0, which is exactly what silently made
+        // every corner invisible (0 height, still "visible", no error) until caught by
+        // inspecting getBoundingClientRect() directly. Mirrors gridStyle()'s own height
+        // formula plus the art box's 10px+10px padding.
+        tabArtStyle(tab) {
+            const maxTier = Math.max(0, ...tab.talents.map((t) => t.tier));
+            return { height: `${(maxTier + 1) * CELL + maxTier * GAP + 20}px` };
+        },
         gridStyle(tab) {
             const maxTier = Math.max(0, ...tab.talents.map((t) => t.tier));
             return {
@@ -293,7 +305,7 @@ createApp({
                             {{ tab.name }}
                             <span class="tt-tab-points">{{ totalSpentInTab(tab) }}</span>
                         </h2>
-                        <div class="tt-tab-art">
+                        <div class="tt-tab-art" :style="tabArtStyle(tab)">
                         <div class="tt-tab-art-corner tl" :style="cornerStyle((tab.background || {}).topLeft)"></div>
                         <div class="tt-tab-art-corner tr" :style="cornerStyle((tab.background || {}).topRight)"></div>
                         <div class="tt-tab-art-corner bl" :style="cornerStyle((tab.background || {}).bottomLeft)"></div>

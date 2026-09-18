@@ -219,7 +219,11 @@ body {
     pointer-events: none;
 }
 
-.tt-tab-art > * {
+/* Only .tt-grid needs lifting above the ::before vignette - NOT the 4 corner divs above,
+   which must stay position:absolute (a generic ">​ *" here previously matched them too and
+   silently downgraded them to position:relative, collapsing their percentage heights into
+   normal flow and pushing the whole grid hundreds of px down the page). */
+.tt-tab-art > .tt-grid {
     position: relative;
 }
 
