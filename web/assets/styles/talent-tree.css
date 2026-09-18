@@ -356,6 +356,36 @@ body {
     display: block;
 }
 
+/* Soft cornflower-blue glow hugging the icon's inner edge on hover - matches wowhead's
+   own talent-calc hilite overlay (wow.zamimg.com/images/Icon/medium/hilite/default.png,
+   a 38x38 sprite whose bg-position is panned on/off on :hover). Sampled that PNG's own
+   pixels directly: a ~1-2px near-opaque dark rim (~rgb(40,50,69)) then a saturated blue
+   (~rgb(96,128,207)) fading from ~63% to 0% opacity over about 8 of its 38px - i.e. ~21%
+   of the icon's width. rgb(100,130,210) here matches that blue; blur/spread are scaled
+   for our 44px cell to reproduce the same falloff distance.
+   MUST be a separate layer painted on top of the <img>, not a box-shadow on the img (or
+   on .tt-cell) directly - an <img>'s own bitmap always paints over its own/its parent's
+   box-shadow (replaced content paints in a later step than backgrounds/box-shadows), so
+   a shadow placed either way is entirely hidden behind the icon except for a
+   barely-visible sliver leaking through the 1px border gap. An absolutely-positioned
+   ::after, being the last child in paint order, renders above the <img> and shows the
+   full glow - the same layering wowhead itself uses (its hilite <a> is the last child of
+   .iconmedium, on top of the icon's own <ins>). */
+.tt-cell::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 4px;
+    box-shadow: inset 0 0 8px 2px rgba(100, 130, 210, 0.75);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 100ms ease;
+}
+
+.tt-cell:hover::after {
+    opacity: 1;
+}
+
 .tt-cell.tt-locked {
     cursor: not-allowed;
 }

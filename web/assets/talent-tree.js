@@ -17,6 +17,13 @@ const GAP = 22; // ~half the icon size, per feedback - was 6 (too tight)
 const ARROW_LEN = 9; // must match the marker's markerWidth/markerHeight below
 const TOOLTIP_MAX_WIDTH = 280; // must match .tt-tooltip's max-width in talent-tree.css
 
+// Vanilla's talent panel is always 7 tier-rows tall (0-6, gated every 5 points up to 30) -
+// a fixed structural constant of the client's own talent UI, not talent data: every
+// populated tab across the whole extracted dataset has maxTier === 6. Used unconditionally
+// by tabArtStyle() (the background art box's height must never depend on a tab's own
+// talent count - see that method).
+const MIN_TIER_ROWS = 7;
+
 // The only 3 power types that occur on player talent abilities in vanilla - see
 // BuildExtractor.ResolveAbilityFields / .claude-docs/gotchas.md.
 const POWER_TYPE_NAMES = { 0: 'Mana', 1: 'Rage', 3: 'Energy' };
@@ -279,11 +286,20 @@ const vueApp = createApp({
         // resolves against a containing block that itself has a definite (non-auto)
         // height; against 'auto' it computes to 0, which is exactly what silently made
         // every corner invisible (0 height, still "visible", no error) until caught by
-        // inspecting getBoundingClientRect() directly. Mirrors gridStyle()'s own height
-        // formula plus the art box's 10px+10px padding.
-        tabArtStyle(tab) {
-            const maxTier = Math.max(0, ...tab.talents.map((t) => t.tier));
-            return { height: `${(maxTier + 1) * CELL + maxTier * GAP + 20}px` };
+        // inspecting getBoundingClientRect() directly.
+        //
+        // Deliberately NOT derived from this tab's own talent data (no Math.max over
+        // tab.talents): the background quadrant textures are cropped by fixed CSS
+        // percentages of THIS box, so the box's proportions must always match the real
+        // panel, independent of how many talents this particular tab/build happens to
+        // have. Using MIN_TIER_ROWS unconditionally (same formula gridStyle() uses per-tab)
+        // is what keeps a sparse/empty tab's art from squashing - a data-driven height
+        // collapsed to a single row for Warlock Demonology on 0.11.0.3925 (0 talents,
+        // "no demonology talents yet" per that patch), stretching the correctly-sized
+        // quadrant PNGs into a fraction of their real height.
+        tabArtStyle() {
+            const rows = MIN_TIER_ROWS;
+            return { height: `${rows * CELL + (rows - 1) * GAP + 20}px` };
         },
         gridStyle(tab) {
             const maxTier = Math.max(0, ...tab.talents.map((t) => t.tier));
