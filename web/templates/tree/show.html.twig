@@ -19,14 +19,60 @@
                 {% endfor %}
             </select>
         </form>
+        <button id="tt-settings-gear" class="tt-settings-gear" type="button" title="Settings">&#9881;</button>
     </div>
     <div id="talent-tree-app" data-tree-url="{{ path('api_talent_tree', { buildLabel: build.label, classSlug: class.slug }) }}"></div>
+    <div id="tt-settings-overlay" class="tt-settings-overlay" hidden>
+        <div class="tt-settings-modal">
+            <h2>Settings</h2>
+            <label class="tt-settings-row">
+                <input id="tt-setting-sort-alpha" type="checkbox">
+                Sort tabs alphabetically
+            </label>
+            <label class="tt-settings-row">
+                <input id="tt-setting-show-id" type="checkbox">
+                Show talent ID in tooltip
+            </label>
+            <button id="tt-settings-close" class="tt-settings-close" type="button">Close</button>
+        </div>
+    </div>
     <script>
         const ttForm = document.getElementById('tt-picker-form');
         ttForm.addEventListener('change', () => {
             const build = ttForm.build.value;
             const cls = ttForm.class.value;
             window.location.href = `/tree/${encodeURIComponent(build)}/${encodeURIComponent(cls)}`;
+        });
+
+        const ttSettingsGear = document.getElementById('tt-settings-gear');
+        const ttSettingsOverlay = document.getElementById('tt-settings-overlay');
+        const ttSettingsClose = document.getElementById('tt-settings-close');
+        const ttSettingSortAlpha = document.getElementById('tt-setting-sort-alpha');
+        const ttSettingShowId = document.getElementById('tt-setting-show-id');
+
+        ttSettingsGear.addEventListener('click', () => {
+            // window.ttApp is the mounted Vue instance (assigned at the bottom of
+            // talent-tree.js) - read its live `settings` to populate the checkboxes,
+            // rather than re-reading localStorage ourselves (single source of truth).
+            const settings = window.ttApp.settings;
+            ttSettingSortAlpha.checked = settings.sortTabsAlphabetically;
+            ttSettingShowId.checked = settings.showTalentIdInTooltip;
+            ttSettingsOverlay.hidden = false;
+        });
+
+        ttSettingsClose.addEventListener('click', () => { ttSettingsOverlay.hidden = true; });
+        ttSettingsOverlay.addEventListener('click', (e) => {
+            if (e.target === ttSettingsOverlay) ttSettingsOverlay.hidden = true;
+        });
+
+        // Mutating window.ttApp.settings directly triggers Vue's own reactivity (it's the
+        // same reactive object the app renders from) and its $watch persists to
+        // localStorage - no event bus needed between this plain script and the Vue app.
+        ttSettingSortAlpha.addEventListener('change', (e) => {
+            window.ttApp.settings.sortTabsAlphabetically = e.target.checked;
+        });
+        ttSettingShowId.addEventListener('change', (e) => {
+            window.ttApp.settings.showTalentIdInTooltip = e.target.checked;
         });
     </script>
 {% endblock %}

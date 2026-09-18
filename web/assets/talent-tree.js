@@ -23,7 +23,24 @@ function cellCenter(tier, columnIndex) {
     };
 }
 
-createApp({
+// Settings modal (gear icon) lives in tree/show.html.twig as plain HTML/JS outside this
+// Vue app, since it sits in the .tt-picker row alongside the build/class <select>s, not
+// inside #talent-tree-app. It reaches these settings by mutating window.ttApp.settings
+// directly - same reactive object Vue itself uses, so the change is picked up immediately
+// with no event-bus/custom-event plumbing needed.
+const SETTINGS_STORAGE_KEY = 'tt-settings';
+const DEFAULT_SETTINGS = { sortTabsAlphabetically: false, showTalentIdInTooltip: false };
+
+function loadSettings() {
+    try {
+        const raw = localStorage.getItem(SETTINGS_STORAGE_KEY);
+        return raw ? { ...DEFAULT_SETTINGS, ...JSON.parse(raw) } : { ...DEFAULT_SETTINGS };
+    } catch {
+        return { ...DEFAULT_SETTINGS };
+    }
+}
+
+const vueApp = createApp({
     data() {
         return {
             tree: null,
@@ -32,11 +49,20 @@ createApp({
             hoveredTab: null,
             hoveredTalent: null,
             tooltipPos: { x: 0, y: 0 },
+            settings: loadSettings(),
         };
     },
     computed: {
         totalSpent() {
             return Object.values(this.spent).reduce((sum, r) => sum + r, 0);
+        },
+        // Backend order (talent_tabs.order_index, with an id tie-break - see
+        // .claude-docs/gotchas.md) reflects the real client layout; alphabetical is purely
+        // an opt-in convenience for players who'd rather scan tabs by name.
+        visibleTabs() {
+            if (!this.tree) return [];
+            if (!this.settings.sortTabsAlphabetically) return this.tree.tabs;
+            return [...this.tree.tabs].sort((a, b) => a.name.localeCompare(b.name));
         },
         // A computed (not a value snapshotted in the mouseenter/mousemove handler) so it
         // reactively tracks `spent` - clicking a cell without moving the mouse afterwards
@@ -54,6 +80,7 @@ createApp({
             const nextRank = (spent > 0 && spent < talent.maxRank) ? talent.ranks[spent] : null;
             return {
                 name: mainRank.name,
+                talentId: talent.id,
                 spent,
                 maxRank: talent.maxRank,
                 description: mainRank.description,
@@ -83,6 +110,9 @@ createApp({
         this.loadFromUrl();
 
         this.$watch('spent', () => this.saveToUrl(), { deep: true });
+        this.$watch('settings', () => {
+            localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(this.settings));
+        }, { deep: true });
     },
     methods: {
         totalSpentInTab(tab) {
@@ -293,7 +323,7 @@ createApp({
                 <header class="tt-header">
                     <h1>{{ tree.class.name }} - {{ tree.build.label }}</h1>
                     <div class="tt-summary">
-                        <span class="tt-summary-item" v-for="tab in tree.tabs" :key="tab.id">
+                        <span class="tt-summary-item" v-for="tab in visibleTabs" :key="tab.id">
                             <img v-if="tab.iconUrl" :src="tab.iconUrl" width="20" height="20" alt="">
                             {{ tab.name }}: {{ totalSpentInTab(tab) }}
                         </span>
@@ -302,7 +332,7 @@ createApp({
                     </div>
                 </header>
                 <div class="tt-tabs">
-                    <section class="tt-tab" v-for="tab in tree.tabs" :key="tab.id">
+                    <section class="tt-tab" v-for="tab in visibleTabs" :key="tab.id">
                         <h2 class="tt-tab-title">
                             <img v-if="tab.iconUrl" :src="tab.iconUrl" width="24" height="24" alt="">
                             {{ tab.name }}
@@ -337,7 +367,10 @@ createApp({
             </template>
             <p v-else>Loading...</p>
             <div v-if="tooltip" class="tt-tooltip" :style="{ left: tooltip.x + 'px', top: tooltip.y + 'px' }">
-                <div class="tt-tooltip-title">{{ tooltip.name }} ({{ tooltip.spent }}/{{ tooltip.maxRank }})</div>
+                <div class="tt-tooltip-title">
+                    <span>{{ tooltip.name }} ({{ tooltip.spent }}/{{ tooltip.maxRank }})</span>
+                    <span v-if="settings.showTalentIdInTooltip" class="tt-tooltip-id">#{{ tooltip.talentId }}</span>
+                </div>
                 <div class="tt-tooltip-desc">{{ tooltip.description }}</div>
                 <template v-if="tooltip.nextDescription">
                     <div class="tt-tooltip-next-label">Next rank:</div>
@@ -350,3 +383,7 @@ createApp({
         </div>
     `,
 }).mount('#talent-tree-app');
+// Exposed so the settings modal (plain HTML/JS in tree/show.html.twig, outside this Vue
+// app - it sits in the .tt-picker row, not inside #talent-tree-app) can mutate `settings`
+// directly and get Vue's reactivity for free.
+window.ttApp = vueApp;
