@@ -88,7 +88,9 @@ const vueApp = createApp({
             spent: {},
             hoveredTab: null,
             hoveredTalent: null,
-            tooltipPos: { x: 0, y: 0 },
+            // A style object, not {x,y} numbers - see showTooltip()/clampTooltipToViewportBottom()
+            // for why the horizontal side needs `left` in one case and `right` in the other.
+            tooltipStyle: { left: '0px', top: '0px' },
             settings: loadSettings(),
         };
     },
@@ -133,8 +135,6 @@ const vueApp = createApp({
                 rangeText: formatAbilityRange(mainRank),
                 castTimeText: formatAbilityCastTime(mainRank),
                 cooldownText: formatAbilityCooldown(mainRank),
-                x: this.tooltipPos.x,
-                y: this.tooltipPos.y,
             };
         },
     },
@@ -346,14 +346,19 @@ const vueApp = createApp({
             // as its shrink-to-fit ceiling, so the browser silently narrows it to always fit
             // rather than ever actually overflowing past the right edge - measuring
             // getBoundingClientRect().right after render would basically never see an
-            // overflow to react to, it'd just observe an already-squeezed box. Flip to the
-            // left of the cursor instead whenever the default position wouldn't leave room
-            // for the full max-width, so the box keeps its normal shape.
+            // overflow to react to, it'd just observe an already-squeezed box.
+            //
+            // When flipped, anchor with `right` (not a computed `left`) - the box's actual
+            // width varies with content (a short description renders narrower than
+            // TOOLTIP_MAX_WIDTH), so anchoring by `left = mouseX - 16 - TOOLTIP_MAX_WIDTH`
+            // left a bigger visible gap before the cursor for shorter tooltips (their right
+            // edge fell short of mouseX - 16, since the box never reaches full max-width).
+            // `right` keeps that edge - and so the visible gap - the same regardless of how
+            // wide the box ends up being.
             const wouldSqueeze = event.clientX + 16 + TOOLTIP_MAX_WIDTH > window.innerWidth;
-            this.tooltipPos = {
-                x: wouldSqueeze ? event.clientX - 16 - TOOLTIP_MAX_WIDTH : event.clientX + 16,
-                y: event.clientY + 16,
-            };
+            this.tooltipStyle = wouldSqueeze
+                ? { right: `${window.innerWidth - event.clientX + 16}px`, top: `${event.clientY + 16}px` }
+                : { left: `${event.clientX + 16}px`, top: `${event.clientY + 16}px` };
             // Vertical overflow doesn't have the same auto-shrink behavior (height isn't
             // capped the way width is), so it genuinely overflows past the bottom and a
             // post-render measurement is the right tool here.
@@ -364,7 +369,8 @@ const vueApp = createApp({
             if (!el) return;
             const overflow = el.getBoundingClientRect().bottom - window.innerHeight;
             if (overflow > 0) {
-                this.tooltipPos = { ...this.tooltipPos, y: this.tooltipPos.y - overflow - 8 };
+                const currentTop = parseFloat(this.tooltipStyle.top);
+                this.tooltipStyle = { ...this.tooltipStyle, top: `${currentTop - overflow - 8}px` };
             }
         },
         hideTooltip() {
@@ -465,7 +471,7 @@ const vueApp = createApp({
                 </div>
             </template>
             <p v-else>Loading...</p>
-            <div v-if="tooltip" ref="tooltipEl" class="tt-tooltip" :style="{ left: tooltip.x + 'px', top: tooltip.y + 'px' }">
+            <div v-if="tooltip" ref="tooltipEl" class="tt-tooltip" :style="tooltipStyle">
                 <div class="tt-tooltip-title">
                     <span>{{ tooltip.name }} ({{ tooltip.spent }}/{{ tooltip.maxRank }})</span>
                     <span v-if="settings.showTalentIdInTooltip" class="tt-tooltip-id">#{{ tooltip.talentId }}</span>
