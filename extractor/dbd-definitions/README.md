@@ -17,3 +17,5 @@ and note the new commit hash here.
 | `ChrClasses.dbd` | ChrClasses.dbc — class names/`PlayerClass` (number used to build classMask = `1<<(PlayerClass-1)`); 4 vanilla layouts, only `Filename` missing before `0.5.5.3494` | `2b8d984` (2026-09-16) |
 | `SpellDuration.dbd` | SpellDuration.dbc — one unchanged layout for all of vanilla; `Duration` (ms) needed for `$d`/`$o` escape sequences in Spell.Description | `2b8d984` (2026-09-16) |
 | `SpellRadius.dbd` | SpellRadius.dbc — one unchanged layout for all of vanilla; `Radius` (yards) needed for `$a` escape sequences | `2b8d984` (2026-09-16) |
+| `SpellRange.dbd` | SpellRange.dbc — one unchanged layout for all of vanilla; `RangeMin`/`RangeMax`/`Flags` needed for the "active ability" tooltip's range line (`Flags & 0x1` = melee range, verified on real data — id=2 is the only melee row, max=5yd) | `2b8d984` (2026-09-16) |
+| `SpellCastTimes.dbd` | SpellCastTimes.dbc — one unchanged layout for all of vanilla; `Base` (ms) needed for the "active ability" tooltip's cast-time line | `2b8d984` (2026-09-16) |

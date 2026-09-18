@@ -40,6 +40,8 @@ return args[0] switch
     "extract-build" => ExtractBuild(args[1], args[2], args[3], args[4]),
     "extract-class-icons" => ExtractClassIcons(args[1], args[2], args[3]),
     "find-spell-attr" => FindSpellAttr(args[1], args[2], args[3], args[4], args[5]),
+    "dump-spell-ranges" => DumpSpellRanges(args[1], args[2]),
+    "spike-ability-fields" => SpikeAbilityFields(args[1], args[2], int.Parse(args[3])),
     _ => Fail($"Unknown command: {args[0]}")
 };
 
@@ -318,6 +320,61 @@ static int RawTalentTabById(string clientDir, int targetId)
     }
 
     return Fail($"No record with ID={targetId} found among {recordCount} records.");
+}
+
+// One-off raw dump of every SpellRange.dbc row (numeric fields only - id/minRange/maxRange/
+// flags, skipping the DisplayName_lang/DisplayNameShort_lang string block) to verify the
+// Flags bit-0x1-means-melee assumption against real vanilla data before trusting it in
+// DbcClient.GetSpellRange. Layout: ID<32>, RangeMin<32>, RangeMax<32>, Flags<32>, then two
+// locstring blocks (not read here) - fieldCount=22/recordSize=88, confirmed via
+// raw-dbc-header.
+static int DumpSpellRanges(string clientDir, string build)
+{
+    using var archive = OpenPatchedDbc(clientDir);
+    var bytes = archive.ReadFile(@"DBFilesClient\SpellRange.dbc");
+
+    var recordCount = (int)BitConverter.ToUInt32(bytes, 4);
+    var fieldCount = (int)BitConverter.ToUInt32(bytes, 8);
+    var recordSize = (int)BitConverter.ToUInt32(bytes, 12);
+    if (fieldCount != 22 || recordSize != 88)
+        return Fail($"Unexpected SpellRange.dbc layout (fieldCount={fieldCount}, recordSize={recordSize}) - this command only knows the 22-field/88-byte vanilla layout.");
+
+    for (var recordIndex = 0; recordIndex < recordCount; recordIndex++)
+    {
+        var offset = 20 + recordIndex * recordSize;
+        var id = BitConverter.ToInt32(bytes, offset);
+        var minRange = BitConverter.ToSingle(bytes, offset + 4);
+        var maxRange = BitConverter.ToSingle(bytes, offset + 8);
+        var flags = BitConverter.ToInt32(bytes, offset + 12);
+        Console.WriteLine($"id={id} minRange={minRange} maxRange={maxRange} flags=0x{flags:X} (melee bit 0x1: {(flags & 0x1) != 0})");
+    }
+
+    return 0;
+}
+
+// One-off spike: dump every field needed for the "active ability" tooltip rows (cost/range/
+// cast time/cooldown) for one spell, to verify real vanilla values before trusting the
+// formatting logic on them.
+static int SpikeAbilityFields(string clientDir, string build, int spellId)
+{
+    using var archive = OpenPatchedDbc(clientDir);
+    var client = MakeDbcClient(archive);
+
+    var spell = client.GetSpell(build, spellId);
+    if (spell is null)
+        return Fail($"Spell {spellId} not found");
+
+    var range = client.GetSpellRange(build, spell.RangeIndex);
+    var castTimeMs = client.GetSpellCastTimeMs(build, spell.CastingTimeIndex);
+
+    Console.WriteLine($"{spell.Name} (spell {spellId}):");
+    Console.WriteLine($"  Attributes=0x{spell.Attributes:X8}");
+    Console.WriteLine($"  PowerType={spell.PowerType} ManaCost={spell.ManaCost}");
+    Console.WriteLine($"  RangeIndex={spell.RangeIndex} -> {(range is null ? "NOT FOUND" : $"min={range.MinRange} max={range.MaxRange} flags=0x{range.Flags:X} isMelee={range.IsMelee}")}");
+    Console.WriteLine($"  CastingTimeIndex={spell.CastingTimeIndex} -> {(castTimeMs is null ? "NOT FOUND" : $"{castTimeMs} ms")}");
+    Console.WriteLine($"  RecoveryTime={spell.RecoveryTime} CategoryRecoveryTime={spell.CategoryRecoveryTime}");
+
+    return 0;
 }
 
 // Full pipeline for one icon, through IconPipeline (resolve -> hash -> cache check -> decode

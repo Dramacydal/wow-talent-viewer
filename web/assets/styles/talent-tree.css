@@ -432,6 +432,18 @@ body {
     white-space: nowrap;
 }
 
+/* Cost/range and cast-time/cooldown lines for "active ability" talents. A lone span (the
+   other side has nothing to show) naturally sits at the start/left with justify-content:
+   space-between - no extra CSS needed for the "shift left when one side is missing" rule. */
+.tt-tooltip-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    color: var(--tt-text);
+    font-size: 11px;
+    margin-bottom: 4px;
+}
+
 .tt-tooltip-desc {
     color: #ffd100;
 }

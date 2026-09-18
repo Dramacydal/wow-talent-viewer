@@ -315,7 +315,11 @@ public sealed class BuildExtractor(
 
                 var iconPath = ResolveIcon(spell.SpellIconId);
                 var description = descriptionFormatter.Format(spell);
-                rows.Add([ourTalentId, i + 1, spellId, spell.Name, description, iconPath]);
+                var ability = ResolveAbilityFields(spell);
+                rows.Add([ourTalentId, i + 1, spellId, spell.Name, description, iconPath,
+                          ability.IsAbility, ability.PowerType, ability.PowerCost,
+                          ability.IsMeleeRange, ability.RangeMinYards, ability.RangeMaxYards,
+                          ability.CastTimeMs, ability.CooldownMs]);
             }
         }
 
@@ -323,11 +327,67 @@ public sealed class BuildExtractor(
 
         using var cmd = BuildBatchInsert(
             "talent_ranks",
-            ["talent_id", "rank_index", "spell_id", "name", "description", "icon_path"],
+            ["talent_id", "rank_index", "spell_id", "name", "description", "icon_path",
+             "is_ability", "power_type", "power_cost", "is_melee_range", "range_min_yards",
+             "range_max_yards", "cast_time_ms", "cooldown_ms"],
             rows,
-            updateColumns: ["spell_id", "name", "description", "icon_path"]);
+            updateColumns: ["spell_id", "name", "description", "icon_path", "is_ability",
+                            "power_type", "power_cost", "is_melee_range", "range_min_yards",
+                            "range_max_yards", "cast_time_ms", "cooldown_ms"]);
         cmd.ExecuteNonQuery();
         return rows.Count;
+    }
+
+    private readonly record struct AbilityFields(
+        bool IsAbility, int? PowerType, int? PowerCost, bool? IsMeleeRange,
+        float? RangeMinYards, float? RangeMaxYards, int? CastTimeMs, int? CooldownMs);
+
+    /// <summary>A talent "grants a usable ability" (shows up in the spellbook, castable) iff
+    /// SPELL_ATTR_IS_ABILITY (0x10) is set and SPELL_ATTR_PASSIVE (0x40) is NOT - verified
+    /// against real vanilla data on every class, see .claude-docs/gotchas.md. Only for those,
+    /// resolve the wowhead-tooltip-style cost/range/cast-time/cooldown fields; everything
+    /// else stays null (not just zero) so the frontend can tell "not an ability" apart from
+    /// "an ability with 0 cost".</summary>
+    private AbilityFields ResolveAbilityFields(SpellRecord spell)
+    {
+        const int SpellAttrPassive = 0x40;
+        const int SpellAttrIsAbility = 0x10;
+        const int PowerTypeRage = 1;
+
+        var isAbility = (spell.Attributes & SpellAttrIsAbility) != 0 && (spell.Attributes & SpellAttrPassive) == 0;
+        if (!isAbility)
+            return new AbilityFields(false, null, null, null, null, null, null, null);
+
+        // Rage (and only Rage - verified against Mana/Energy real costs too) is stored
+        // internally in tenths (300 = 30 Rage); Mana/Energy are stored as the real value.
+        var rawCost = spell.PowerType == PowerTypeRage ? spell.ManaCost / 10 : spell.ManaCost;
+        int? powerType = null, powerCost = null;
+        if (rawCost > 0)
+        {
+            powerType = spell.PowerType;
+            powerCost = rawCost;
+        }
+
+        bool? isMeleeRange = null;
+        float? rangeMin = null, rangeMax = null;
+        var range = dbcClient.GetSpellRange(build, spell.RangeIndex);
+        if (range is not null)
+        {
+            if (range.IsMelee)
+                isMeleeRange = true;
+            else if (range.MaxRange > 0)
+            {
+                rangeMin = range.MinRange;
+                rangeMax = range.MaxRange;
+            }
+        }
+
+        var castTimeMs = dbcClient.GetSpellCastTimeMs(build, spell.CastingTimeIndex) ?? 0;
+
+        var cooldownMs = spell.RecoveryTime > 0 ? spell.RecoveryTime : spell.CategoryRecoveryTime;
+
+        return new AbilityFields(true, powerType, powerCost, isMeleeRange, rangeMin, rangeMax,
+                                  castTimeMs, cooldownMs > 0 ? cooldownMs : null);
     }
 
     private (int upserted, int skipped) UpsertPrerequisites(Dictionary<int, int> talentIdMap, IReadOnlyList<TalentRecord> talents)

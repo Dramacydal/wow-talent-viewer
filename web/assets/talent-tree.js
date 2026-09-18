@@ -16,6 +16,45 @@ const CELL = 44;
 const GAP = 22; // ~half the icon size, per feedback - was 6 (too tight)
 const ARROW_LEN = 9; // must match the marker's markerWidth/markerHeight below
 
+// The only 3 power types that occur on player talent abilities in vanilla - see
+// BuildExtractor.ResolveAbilityFields / .claude-docs/gotchas.md.
+const POWER_TYPE_NAMES = { 0: 'Mana', 1: 'Rage', 3: 'Energy' };
+
+// Trims a fractional value to at most 2 decimals without trailing zeros (1.50 -> "1.5",
+// 3.00 -> "3") - cast time/cooldown/range can all carry real fractional parts.
+function trimNumber(n) {
+    return Number(n.toFixed(2)).toString();
+}
+
+// wowhead-tooltip-style cost/range/cast-time/cooldown lines for an "active ability" rank
+// (see talent_ranks.is_ability - a talent that grants a usable, castable ability rather
+// than being a pure passive). Each returns null when that side has nothing to show, so the
+// template can render just the other side (a lone flex child in a `justify-content:
+// space-between` row naturally sits at the start/left - see .tt-tooltip-row CSS).
+function formatAbilityCost(rank) {
+    if (!rank.powerCost) return null;
+    return `${rank.powerCost} ${POWER_TYPE_NAMES[rank.powerType] ?? rank.powerType}`;
+}
+
+function formatAbilityRange(rank) {
+    if (rank.isMeleeRange) return 'Melee Range';
+    if (!rank.rangeMaxYards) return null;
+    const max = trimNumber(rank.rangeMaxYards);
+    return rank.rangeMinYards ? `${trimNumber(rank.rangeMinYards)}-${max} yd range` : `${max} yd range`;
+}
+
+function formatAbilityCastTime(rank) {
+    if (rank.castTimeMs === null || rank.castTimeMs === undefined) return null;
+    return rank.castTimeMs === 0 ? 'Instant cast' : `${trimNumber(rank.castTimeMs / 1000)} sec cast`;
+}
+
+function formatAbilityCooldown(rank) {
+    if (!rank.cooldownMs) return null;
+    return rank.cooldownMs > 60000
+        ? `${trimNumber(rank.cooldownMs / 60000)} min cooldown`
+        : `${trimNumber(rank.cooldownMs / 1000)} sec cooldown`;
+}
+
 function cellCenter(tier, columnIndex) {
     return {
         x: columnIndex * (CELL + GAP) + CELL / 2,
@@ -88,6 +127,11 @@ const vueApp = createApp({
                 nextDescription: nextRank?.description ?? null,
                 canLearn: this.canSpend(tab, talent),
                 lockReasons: this.lockReasons(tab, talent),
+                isAbility: mainRank.isAbility,
+                costText: formatAbilityCost(mainRank),
+                rangeText: formatAbilityRange(mainRank),
+                castTimeText: formatAbilityCastTime(mainRank),
+                cooldownText: formatAbilityCooldown(mainRank),
                 x: this.tooltipPos.x,
                 y: this.tooltipPos.y,
             };
@@ -400,6 +444,16 @@ const vueApp = createApp({
                     <span>{{ tooltip.name }} ({{ tooltip.spent }}/{{ tooltip.maxRank }})</span>
                     <span v-if="settings.showTalentIdInTooltip" class="tt-tooltip-id">#{{ tooltip.talentId }}</span>
                 </div>
+                <template v-if="tooltip.isAbility">
+                    <div v-if="tooltip.costText || tooltip.rangeText" class="tt-tooltip-row">
+                        <span v-if="tooltip.costText">{{ tooltip.costText }}</span>
+                        <span v-if="tooltip.rangeText">{{ tooltip.rangeText }}</span>
+                    </div>
+                    <div v-if="tooltip.castTimeText || tooltip.cooldownText" class="tt-tooltip-row">
+                        <span v-if="tooltip.castTimeText">{{ tooltip.castTimeText }}</span>
+                        <span v-if="tooltip.cooldownText">{{ tooltip.cooldownText }}</span>
+                    </div>
+                </template>
                 <div class="tt-tooltip-desc">{{ tooltip.description }}</div>
                 <template v-if="tooltip.nextDescription">
                     <div class="tt-tooltip-next-label">Next rank:</div>

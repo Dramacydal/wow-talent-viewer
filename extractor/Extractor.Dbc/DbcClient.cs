@@ -161,7 +161,14 @@ public sealed class DbcClient
             ProcCharges: row.Field<int>("ProcCharges"),
             CumulativeAura: row.Field<int>("CumulativeAura"),
             MaxTargetLevel: hasMaxTargetLevel ? row.Field<int>("MaxTargetLevel") : null,
-            EffectChainTargets: hasChainTargets ? ReadIntArray(row, "EffectChainTargets", 3) : null);
+            EffectChainTargets: hasChainTargets ? ReadIntArray(row, "EffectChainTargets", 3) : null,
+            Attributes: row.Field<int>("Attributes"),
+            PowerType: row.Field<int>("PowerType"),
+            ManaCost: row.Field<int>("ManaCost"),
+            RangeIndex: row.Field<int>("RangeIndex"),
+            CastingTimeIndex: row.Field<int>("CastingTimeIndex"),
+            RecoveryTime: row.Field<int>("RecoveryTime"),
+            CategoryRecoveryTime: row.Field<int>("CategoryRecoveryTime"));
     }
 
     /// <summary>Raw Spell.Attributes bitmask (the first of several Attributes/AttributesEx*
@@ -197,6 +204,29 @@ public sealed class DbcClient
     {
         var index = LoadIndexedById("SpellRadius", build);
         return index.TryGetValue(radiusIndex, out var row) ? row.Field<float>("Radius") : null;
+    }
+
+    /// <summary>SpellRange.dbc row for a Spell's RangeIndex. One unchanged layout for all of
+    /// vanilla. Flags bit 0x1 = melee range (see SpellRangeRecord.IsMelee).</summary>
+    public SpellRangeRecord? GetSpellRange(string build, int rangeIndex)
+    {
+        var index = LoadIndexedById("SpellRange", build);
+        if (!index.TryGetValue(rangeIndex, out var row))
+            return null;
+
+        return new SpellRangeRecord(
+            Id: rangeIndex,
+            MinRange: row.Field<float>("RangeMin"),
+            MaxRange: row.Field<float>("RangeMax"),
+            Flags: row.Field<int>("Flags"));
+    }
+
+    /// <summary>SpellCastTimes.Base in milliseconds, for a Spell's CastingTimeIndex. 0 means
+    /// instant cast. One unchanged layout for all of vanilla.</summary>
+    public int? GetSpellCastTimeMs(string build, int castingTimeIndex)
+    {
+        var index = LoadIndexedById("SpellCastTimes", build);
+        return index.TryGetValue(castingTimeIndex, out var row) ? row.Field<int>("Base") : null;
     }
 
     private static int[] ReadIntArray(DBCD.DBCDRow row, string fieldName, int count)
