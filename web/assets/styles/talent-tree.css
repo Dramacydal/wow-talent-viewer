@@ -1,3 +1,12 @@
+/* The UA stylesheet's `[hidden] { display: none }` loses to ANY same-specificity author
+   rule that sets `display` on the same element (cascade order, not a bug) - bit twice
+   already on .class-icon/.tt-settings-overlay before adding this once, globally, with
+   !important so no future `hidden`-toggled element can silently un-hide again. See
+   .claude-docs/gotchas.md. */
+[hidden] {
+    display: none !important;
+}
+
 :root {
     --tt-cell: 44px;
     --tt-gap: 22px;
@@ -79,13 +88,6 @@ body {
     align-items: center;
     justify-content: center;
     z-index: 200;
-}
-
-/* .tt-settings-overlay's own `display: flex` has the same specificity as the UA
-   stylesheet's `[hidden] { display: none }` and comes later in the cascade, so it silently
-   wins - see .claude-docs/gotchas.md (hit this exact bug once already on .class-icon). */
-.tt-settings-overlay[hidden] {
-    display: none;
 }
 
 .tt-settings-modal {

@@ -1,6 +1,16 @@
 /* Landing page. Same dark/gold theme as talent-tree.css (kept duplicated rather than
    sharing a file across the two separate AssetMapper entrypoints - a handful of variables
    isn't worth the cross-file @import complexity). */
+
+/* The UA stylesheet's `[hidden] { display: none }` loses to ANY same-specificity author
+   rule that sets `display` on the same element (cascade order, not a bug) - bit twice
+   already on .class-icon/.tt-settings-overlay before adding this once, globally, with
+   !important so no future `hidden`-toggled element can silently un-hide again. See
+   .claude-docs/gotchas.md. */
+[hidden] {
+    display: none !important;
+}
+
 :root {
     --tt-bg: #0b0908;
     --tt-panel: #17130f;
@@ -60,12 +70,6 @@ body {
     text-decoration: none;
 }
 
-/* .class-icon's own `display: block` has the same specificity as the UA stylesheet's
-   `[hidden] { display: none }` and comes later in the cascade, so it silently wins and the
-   hidden attribute alone does nothing - needs an explicit override. */
-.class-icon[hidden] {
-    display: none;
-}
 
 .class-icon-label {
     display: flex;
