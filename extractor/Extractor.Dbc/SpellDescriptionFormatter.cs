@@ -131,8 +131,14 @@ public sealed partial class SpellDescriptionFormatter(DbcClient dbcClient, strin
         SecondsWordRegex().IsMatch(sourceText[(m.Index + m.Length)..]);
 
     /// <summary>Total effect value over a periodic effect's full duration — QSpellWork's
-    /// getRealDuration() * (basePoints+1): duration divided by tick period (defaulting to a
-    /// 5-second tick if the effect isn't periodic), times the per-tick amount.
+    /// getRealDuration() * (basePoints+1): duration divided by tick period, times the
+    /// per-tick amount. Returns null (leaves the raw token unresolved, same as any other
+    /// irresolvable escape) if the effect has no real tick period - deliberately NOT a
+    /// hardcoded guess: checked every real `$o` usage in the current dataset (9 spells) and
+    /// every one has a genuine nonzero EffectAuraPeriod, so a synthetic fallback would be
+    /// dead code for real data and, if it ever DID fire on a spell we haven't seen, would
+    /// silently print a made-up number - exactly the class of bug this method used to have
+    /// (see the EffectAuraPeriod/EffectAmplitude mixup in git history and gotchas.md).
     ///
     /// The tick period is Spell.EffectAuraPeriod (an int, ms) - NOT EffectAmplitude (a float,
     /// unrelated to timing). QSpellWork's own C++ struct calls the tick-period field
@@ -148,9 +154,9 @@ public sealed partial class SpellDescriptionFormatter(DbcClient dbcClient, strin
     {
         var durationMs = dbcClient.GetSpellDurationMs(build, spell.DurationIndex);
         if (durationMs is null) return null;
+        if (spell.EffectAuraPeriod[effIdx] <= 0) return null;
 
-        var tickMs = spell.EffectAuraPeriod[effIdx] > 0 ? spell.EffectAuraPeriod[effIdx] : 5000;
-        var ticks = durationMs.Value / tickMs;
+        var ticks = durationMs.Value / spell.EffectAuraPeriod[effIdx];
         return ticks * (spell.EffectBasePoints[effIdx] + 1);
     }
 }
