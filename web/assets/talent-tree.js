@@ -167,9 +167,16 @@ createApp({
             const bg = tab.background || {};
             const corners = [bg.topLeft, bg.topRight, bg.bottomLeft, bg.bottomRight];
             if (corners.every((url) => !url)) return {};
+            // Quadrants are native 256x256 / 64x256 / 256x128 / 64x128 (client's fixed
+            // 320x384 talent frame), but our panel's height varies with tier count - so
+            // corner-anchored natural-size images leave a gap where the panel is taller
+            // than 384px. Sizing each quadrant as a percentage of the panel (matching its
+            // real proportion of the combined 320x384 art) makes all 4 tile exactly with
+            // no gap/overlap regardless of panel size, at the cost of a mild stretch.
             return {
                 backgroundImage: corners.map((url) => (url ? `url(${url})` : 'none')).join(', '),
                 backgroundPosition: 'top left, top right, bottom left, bottom right',
+                backgroundSize: '80% 66.667%, 20% 66.667%, 80% 33.333%, 20% 33.333%',
             };
         },
         gridStyle(tab) {
