@@ -148,18 +148,64 @@ body {
     font-size: 12px;
 }
 
-/* The real client background art (4 quadrants, set inline per tab in JS - see gotchas.md/
-   architecture.md). Locked to the art's own 320x384 aspect ratio so it's never stretched -
-   width comes from the grid content, height follows proportionally. If the talent grid
-   itself is taller than that (many tiers), it overflows below the art onto the tab's own
-   flat background-color rather than distorting the art to match. */
+/* The real client background art (4 quadrants, URLs set inline per tab in JS - see
+   gotchas.md/architecture.md). The raw quadrant PNGs are 320x384 total, but ~64px on the
+   right and ~54px on the bottom are fully transparent in the source texture (meant to be
+   covered by the client's separate frame chrome, which we don't extract) - the real opaque
+   art is only the top-left 300x330 of that canvas. Each corner below crops to exactly that
+   opaque portion (via oversized background-size + top-left position, letting the unwanted
+   part hang off its own box and get clipped) and stretches it to fill the tree area
+   completely, at whatever size the grid's content ends up needing - full-bleed by design,
+   not aspect-locked, per explicit request. */
 .tt-tab-art {
     position: relative;
-    aspect-ratio: 320 / 384;
     background-color: #0c0a08;
-    background-repeat: no-repeat;
     padding: 10px;
     box-sizing: border-box;
+}
+
+.tt-tab-art-corner {
+    position: absolute;
+    background-repeat: no-repeat;
+}
+
+/* Percentages below all derive from the 300x330 opaque region: top-left keeps its full
+   256x256 (no crop needed, it's entirely opaque); top-right/bottom-left/bottom-right each
+   crop away the transparent slice of their native 64px width and/or 128px height. */
+.tt-tab-art-corner.tl {
+    left: 0;
+    top: 0;
+    width: 85.3333%;
+    height: 77.5758%;
+    background-size: 100% 100%;
+    background-position: left top;
+}
+
+.tt-tab-art-corner.tr {
+    left: 85.3333%;
+    top: 0;
+    width: 14.6667%;
+    height: 77.5758%;
+    background-size: 145.4545% 100%;
+    background-position: left top;
+}
+
+.tt-tab-art-corner.bl {
+    left: 0;
+    top: 77.5758%;
+    width: 85.3333%;
+    height: 22.4242%;
+    background-size: 100% 172.973%;
+    background-position: left top;
+}
+
+.tt-tab-art-corner.br {
+    left: 85.3333%;
+    top: 77.5758%;
+    width: 14.6667%;
+    height: 22.4242%;
+    background-size: 145.4545% 172.973%;
+    background-position: left top;
 }
 
 .tt-tab-art::before {

@@ -158,25 +158,13 @@ createApp({
             };
         },
         // The 4 quadrant textures the client itself composites a tab's panel background
-        // from (see architecture.md/gotchas.md) - stacked as 4 independent CSS background
-        // layers rather than pre-glued server-side, positioned flush to their own corner so
-        // they tile together exactly like the real client's layout, at whatever size each
-        // was actually extracted at. Missing quadrants (older/incomplete builds) just leave
-        // that corner as 'none' - the dark ::before vignette still covers the rest.
-        tabBackgroundStyle(tab) {
-            const bg = tab.background || {};
-            const corners = [bg.topLeft, bg.topRight, bg.bottomLeft, bg.bottomRight];
-            if (corners.every((url) => !url)) return {};
-            // Quadrants are native 256x256 / 64x256 / 256x128 / 64x128 (client's fixed
-            // 320x384 talent frame). .tt-tab-art is aspect-ratio-locked to the same 320:384,
-            // so sizing each quadrant as its real fractional share of that box (80/20 width
-            // split, 66.667/33.333 height split) tiles them exactly with NO stretch and no
-            // gap - the container's own shape already matches the art's shape.
-            return {
-                backgroundImage: corners.map((url) => (url ? `url(${url})` : 'none')).join(', '),
-                backgroundPosition: 'top left, top right, bottom left, bottom right',
-                backgroundSize: '80% 66.667%, 20% 66.667%, 80% 33.333%, 20% 33.333%',
-            };
+        // from (see architecture.md/gotchas.md). Each corner is its own absolutely-
+        // positioned div (.tt-tab-art-corner.{tl,tr,bl,br} in the template, sizing/cropping
+        // handled by fixed CSS percentages - see talent-tree.css) - this method only sets
+        // which image to show. Missing quadrants (older/incomplete builds) leave that corner
+        // blank - the dark ::before vignette still covers the rest.
+        cornerStyle(url) {
+            return { backgroundImage: url ? `url(${url})` : 'none' };
         },
         gridStyle(tab) {
             const maxTier = Math.max(0, ...tab.talents.map((t) => t.tier));
@@ -305,7 +293,11 @@ createApp({
                             {{ tab.name }}
                             <span class="tt-tab-points">{{ totalSpentInTab(tab) }}</span>
                         </h2>
-                        <div class="tt-tab-art" :style="tabBackgroundStyle(tab)">
+                        <div class="tt-tab-art">
+                        <div class="tt-tab-art-corner tl" :style="cornerStyle((tab.background || {}).topLeft)"></div>
+                        <div class="tt-tab-art-corner tr" :style="cornerStyle((tab.background || {}).topRight)"></div>
+                        <div class="tt-tab-art-corner bl" :style="cornerStyle((tab.background || {}).bottomLeft)"></div>
+                        <div class="tt-tab-art-corner br" :style="cornerStyle((tab.background || {}).bottomRight)"></div>
                         <div class="tt-grid" :style="gridStyle(tab)">
                             <svg class="tt-connectors">
                                 <polyline v-for="c in connectors(tab)" :key="c.key"
