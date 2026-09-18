@@ -453,15 +453,96 @@ public sealed class BuildExtractor(
         return result.IconPath;
     }
 
+    private IReadOnlyDictionary<string, string>? preBackgroundFileQuadrants;
+
+    /// <summary>Before 0.8.0.3734, TalentTab.dbc has no BackgroundFile field at all (the
+    /// per-tab background system didn't exist yet), but the client's own UI still hardcodes
+    /// real background art for its one and only fully-built tab (Mage/Fire) directly in
+    /// Interface\FrameXML\TalentFrame.xml - the same TopLeft/TopRight/BottomLeft/BottomRight
+    /// anchoring every later build's per-tab quadrants use, just shared across ALL tabs
+    /// (Arcane/Fire/Frost alike show this same fire-themed background; there was no per-tab
+    /// differentiation yet). Parses that XML for the real filenames - same discipline as the
+    /// class-icon UV coordinates (read from CharacterCreate.lua, not guessed/typed by hand):
+    /// finds the Texture named "TalentFrameBackgroundTopLeft" and its 3 siblings whose
+    /// &lt;Anchor relativeTo="TalentFrameBackgroundTopLeft"&gt; targets each corner, and reads
+    /// each one's real `file` attribute - nothing about the actual filenames (e.g.
+    /// "fireTalent1") is hardcoded in this code. Cached per build (the XML is invariant
+    /// across all tabs/quadrants within one extraction run).</summary>
+    private IReadOnlyDictionary<string, string> ResolvePreBackgroundFileQuadrants()
+    {
+        if (preBackgroundFileQuadrants is not null)
+            return preBackgroundFileQuadrants;
+
+        var result = new Dictionary<string, string>();
+        const string xmlPath = @"Interface\FrameXML\TalentFrame.xml";
+        if (interfaceArchive.HasFile(xmlPath))
+        {
+            try
+            {
+                var doc = System.Xml.Linq.XDocument.Load(new MemoryStream(interfaceArchive.ReadFile(xmlPath)));
+                var ns = doc.Root!.Name.Namespace;
+
+                var topLeft = doc.Descendants(ns + "Texture")
+                    .FirstOrDefault(t => (string?)t.Attribute("name") == "TalentFrameBackgroundTopLeft");
+                var topLeftFile = (string?)topLeft?.Attribute("file");
+                if (topLeftFile is not null)
+                {
+                    result["TopLeft"] = topLeftFile;
+                    foreach (var texture in doc.Descendants(ns + "Texture"))
+                    {
+                        var anchor = texture.Element(ns + "Anchors")?.Element(ns + "Anchor");
+                        if ((string?)anchor?.Attribute("relativeTo") != "TalentFrameBackgroundTopLeft")
+                            continue;
+
+                        var quadrant = (string?)anchor!.Attribute("relativePoint") switch
+                        {
+                            "TOPRIGHT" => "TopRight",
+                            "BOTTOMLEFT" => "BottomLeft",
+                            "BOTTOMRIGHT" => "BottomRight",
+                            _ => null,
+                        };
+                        var file = (string?)texture.Attribute("file");
+                        if (quadrant is not null && file is not null)
+                            result[quadrant] = file;
+                    }
+                }
+            }
+            catch (System.Xml.XmlException)
+            {
+                // Unexpected/malformed structure in some build we haven't seen - fall through
+                // with whatever was found (possibly nothing); never crash extraction over an
+                // optional visual fallback.
+            }
+        }
+
+        preBackgroundFileQuadrants = result;
+        return result;
+    }
+
     /// <summary>The 4 quadrant textures the client itself composites a talent tab's
     /// background panel from (see .claude-docs/architecture.md). Kept as 4 separate images,
     /// not glued into one. Reuses the same IconPipeline as ability icons - already handles
     /// "file doesn't exist in this build" gracefully (returns null, doesn't throw), which
     /// matters here: BackgroundFile itself is missing before 0.8.0.3734, and even where it's
-    /// present a specific quadrant could still be absent in an early/incomplete build.</summary>
+    /// present a specific quadrant could still be absent in an early/incomplete build.
+    ///
+    /// null vs "" matters here, deliberately not collapsed with IsNullOrEmpty: null means the
+    /// field doesn't exist in this build's DBC layout at all (DbcClient.ReadTalentTabs) - the
+    /// pre-0.8.0.3734 case, see ResolvePreBackgroundFileQuadrants above. "" means the field
+    /// DOES exist but is genuinely blank for this specific tab - e.g. Warlock's tabs on
+    /// 0.10.0.3892-0.10.x had classMask=32 with no background art assigned yet (see
+    /// gotchas.md) - a real "no background configured" case that must NOT get the
+    /// TalentFrame.xml fallback (Warlock never had that background).</summary>
     private string? ResolveBackgroundQuadrant(string? backgroundFile, string quadrant)
     {
-        if (string.IsNullOrEmpty(backgroundFile)) return null;
+        if (backgroundFile is null)
+        {
+            if (!ResolvePreBackgroundFileQuadrants().TryGetValue(quadrant, out var xmlFile))
+                return null;
+            return backgroundPipeline.Extract(xmlFile).IconPath;
+        }
+
+        if (backgroundFile.Length == 0) return null;
 
         var result = backgroundPipeline.Extract($@"Interface\TalentFrame\{backgroundFile}-{quadrant}");
         return result.IconPath;
