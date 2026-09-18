@@ -15,6 +15,7 @@ import './styles/talent-tree.css';
 const CELL = 44;
 const GAP = 22; // ~half the icon size, per feedback - was 6 (too tight)
 const ARROW_LEN = 9; // must match the marker's markerWidth/markerHeight below
+const TOOLTIP_MAX_WIDTH = 280; // must match .tt-tooltip's max-width in talent-tree.css
 
 // The only 3 power types that occur on player talent abilities in vanilla - see
 // BuildExtractor.ResolveAbilityFields / .claude-docs/gotchas.md.
@@ -339,14 +340,26 @@ const vueApp = createApp({
         showTooltip(tab, talent, event) {
             this.hoveredTab = tab;
             this.hoveredTalent = talent;
-            // Always start from the default (mouse + 16,16) position - only shift away from
-            // it if the tooltip's real rendered height (unknown until it's in the DOM, since
-            // it depends on content: description length, whether the ability rows show,
-            // etc.) would push it past the bottom of the viewport.
-            this.tooltipPos = { x: event.clientX + 16, y: event.clientY + 16 };
-            this.$nextTick(() => this.clampTooltipToViewport());
+            // Horizontal side is decided BEFORE render, from TOOLTIP_MAX_WIDTH - not by
+            // measuring afterwards like the vertical clamp below. A position:fixed box with
+            // only `left` set (no `right`) and no explicit width uses (viewport width - left)
+            // as its shrink-to-fit ceiling, so the browser silently narrows it to always fit
+            // rather than ever actually overflowing past the right edge - measuring
+            // getBoundingClientRect().right after render would basically never see an
+            // overflow to react to, it'd just observe an already-squeezed box. Flip to the
+            // left of the cursor instead whenever the default position wouldn't leave room
+            // for the full max-width, so the box keeps its normal shape.
+            const wouldSqueeze = event.clientX + 16 + TOOLTIP_MAX_WIDTH > window.innerWidth;
+            this.tooltipPos = {
+                x: wouldSqueeze ? event.clientX - 16 - TOOLTIP_MAX_WIDTH : event.clientX + 16,
+                y: event.clientY + 16,
+            };
+            // Vertical overflow doesn't have the same auto-shrink behavior (height isn't
+            // capped the way width is), so it genuinely overflows past the bottom and a
+            // post-render measurement is the right tool here.
+            this.$nextTick(() => this.clampTooltipToViewportBottom());
         },
-        clampTooltipToViewport() {
+        clampTooltipToViewportBottom() {
             const el = this.$refs.tooltipEl;
             if (!el) return;
             const overflow = el.getBoundingClientRect().bottom - window.innerHeight;
