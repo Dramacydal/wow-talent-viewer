@@ -30,6 +30,7 @@ return args[0] switch
     "spike-spell" => SpikeSpell(args[1], args[2]),
     "raw-talent-record" => RawTalentRecord(args[1], int.Parse(args[2])),
     "raw-talent-by-id" => RawTalentById(args[1], int.Parse(args[2])),
+    "raw-talenttab-by-id" => RawTalentTabById(args[1], int.Parse(args[2])),
     "talents-in-tab" => TalentsInTab(args[1], args[2], int.Parse(args[3])),
     "talent-prereqs" => TalentPrereqs(args[1], args[2], int.Parse(args[3])),
     "spike-chrclasses" => SpikeChrClasses(args[1], args[2]),
@@ -273,6 +274,45 @@ static int RawTalentById(string clientDir, int targetId)
 
         Console.WriteLine($"found id={id} at physical record index {recordIndex} (byte {offset}): " +
                            $"tabId={tabId} tier={tier} col={col} ranks=[{string.Join(",", ranks)}]");
+        return 0;
+    }
+
+    return Fail($"No record with ID={targetId} found among {recordCount} records.");
+}
+
+// Independent cross-check of OrderIndex, reading raw bytes directly - bypasses DBCD/
+// DbcClient entirely, to rule out a mapping bug on our side vs. real (possibly tied) data.
+// Layout: ID, Name_lang(9 field-slots: 8 locale offsets + mask), SpellIconID, RaceMask,
+// ClassMask, OrderIndex, BackgroundFile - matches fieldCount=15/recordSize=60, the layout
+// covering 0.9.0.3807-0.12.0.3988 and 1.0.0.3980-1.12.3.6141 (see dbd-definitions/
+// TalentTab.dbd). Fails loudly if fieldCount doesn't match, rather than silently reading
+// the wrong offset for an older/newer build with a different layout.
+static int RawTalentTabById(string clientDir, int targetId)
+{
+    using var archive = OpenPatchedDbc(clientDir);
+    var bytes = archive.ReadFile(@"DBFilesClient\TalentTab.dbc");
+
+    var recordCount = (int)BitConverter.ToUInt32(bytes, 4);
+    var fieldCount = (int)BitConverter.ToUInt32(bytes, 8);
+    var recordSize = (int)BitConverter.ToUInt32(bytes, 12);
+    if (fieldCount != 15 || recordSize != 60)
+        return Fail($"Unexpected TalentTab.dbc layout (fieldCount={fieldCount}, recordSize={recordSize}) - " +
+                     "this command only knows the ID/Name_lang(9)/SpellIconID/RaceMask/ClassMask/OrderIndex/BackgroundFile layout (fieldCount=15).");
+
+    for (var recordIndex = 0; recordIndex < recordCount; recordIndex++)
+    {
+        var offset = 20 + recordIndex * recordSize;
+        var id = BitConverter.ToInt32(bytes, offset);
+        if (id != targetId) continue;
+
+        int I(int fieldOffset) => BitConverter.ToInt32(bytes, offset + fieldOffset);
+        var spellIconId = I(40);  // field 10: (1 + 9) * 4
+        var raceMask = I(44);     // field 11
+        var classMask = I(48);    // field 12
+        var orderIndex = I(52);   // field 13
+
+        Console.WriteLine($"found id={id} at physical record index {recordIndex} (byte {offset}): " +
+                           $"spellIconId={spellIconId} raceMask={raceMask} classMask={classMask} orderIndex={orderIndex}");
         return 0;
     }
 
