@@ -26,7 +26,7 @@ New-Item -ItemType Directory -Force -Path $logsDir | Out-Null
 
 # No Talent.dbc at all on these - talents were a trainer-NPC mechanic pre-0.7.0, nothing to
 # extract (see gotchas.md). Extending this list is safe if more such clients show up later.
-$excluded = @("0.5.3.3368", "0.5.5.3494")
+$excluded = @("0.5.3.3368", "0.5.5.3494", "0.6.0.2592")
 
 Write-Host "Building extractor once..."
 dotnet build $cliProj
