@@ -88,6 +88,9 @@ createApp({
         totalSpentInTab(tab) {
             return tab.talents.reduce((sum, t) => sum + (this.spent[t.id] || 0), 0);
         },
+        maxPointsInTab(tab) {
+            return tab.talents.reduce((sum, t) => sum + t.maxRank, 0);
+        },
         isUnlocked(tab, talent) {
             return this.totalSpentInTab(tab) >= talent.tier * 5;
         },
@@ -303,7 +306,7 @@ createApp({
                         <h2 class="tt-tab-title">
                             <img v-if="tab.iconUrl" :src="tab.iconUrl" width="24" height="24" alt="">
                             {{ tab.name }}
-                            <span class="tt-tab-points">{{ totalSpentInTab(tab) }}</span>
+                            <span class="tt-tab-points">{{ totalSpentInTab(tab) }} / {{ maxPointsInTab(tab) }}</span>
                         </h2>
                         <div class="tt-tab-art" :style="tabArtStyle(tab)">
                         <div class="tt-tab-art-corner tl" :style="cornerStyle((tab.background || {}).topLeft)"></div>
