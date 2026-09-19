@@ -52,7 +52,12 @@ class TalentTreeController extends AbstractController
 
         return $this->json([
             'build' => ['id' => $build->getId(), 'label' => $build->getLabel()],
-            'class' => ['id' => $class->getId(), 'slug' => $class->getSlug(), 'name' => $class->getName()],
+            'class' => [
+                'id' => $class->getId(),
+                'slug' => $class->getSlug(),
+                'name' => $class->getName(),
+                'iconUrl' => AssetUrlResolver::classIconUrl($class->getIconPath()),
+            ],
             'tabs' => array_map(
                 fn (TalentTab $tab) => [
                     'id' => $tab->getId(),

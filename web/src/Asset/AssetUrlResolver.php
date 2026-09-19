@@ -17,4 +17,9 @@ final class AssetUrlResolver
     {
         return $iconPath === null ? null : "/backgrounds/$iconPath.png";
     }
+
+    public static function classIconUrl(?string $iconPath): ?string
+    {
+        return $iconPath === null ? null : "/class-icons/$iconPath.png";
+    }
 }

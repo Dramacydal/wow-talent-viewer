@@ -429,7 +429,10 @@ const vueApp = createApp({
             <p v-if="error">Failed to load talent tree: {{ error }}</p>
             <template v-else-if="tree">
                 <header class="tt-header">
-                    <h1>{{ tree.class.name }} - {{ tree.build.label }}</h1>
+                    <h1 class="tt-header-title">
+                        <img v-if="tree.class.iconUrl" :src="tree.class.iconUrl" :alt="tree.class.name" class="tt-header-icon">
+                        <span>{{ tree.build.label }}</span>
+                    </h1>
                     <div class="tt-summary">
                         <span class="tt-summary-item" v-for="tab in visibleTabs" :key="tab.id">
                             <img v-if="tab.iconUrl" :src="tab.iconUrl" width="20" height="20" alt="">
