@@ -45,6 +45,7 @@ return args[0] switch
     "spike-spell-full" => SpikeSpellFull(args[1], args[2], int.Parse(args[3])),
     "dump-shapeshift-forms" => DumpShapeshiftForms(args[1], args[2]),
     "dump-equip-patterns" => DumpEquipPatterns(args[1], args[2]),
+    "dump-die-sides" => DumpDieSides(args[1], args[2]),
     _ => Fail($"Unknown command: {args[0]}")
 };
 
@@ -456,6 +457,43 @@ static int DumpEquipPatterns(string clientDir, string build)
 
     foreach (var ((itemClass, subclass), (spellId, name)) in seen.OrderBy(kv => kv.Key))
         Console.WriteLine($"  class={itemClass} subclass=0x{subclass:X8}  e.g. spell {spellId} \"{name}\"");
+
+    return 0;
+}
+
+// Diagnostic: which real talent ranks (across every class) actually have EffectDieSides > 1
+// for some effect - i.e. where the effect's value is a random roll, not a fixed number. Ran
+// to check whether $s/$m ever needs to account for DieSides at all in this project's own
+// dataset, since QSpellWork's getDescription() never folds it into $s/$m substitution either
+// (see gotchas.md) - only relevant if some talent's raw Description text actually embeds a
+// die-roll-backed effect index in an $s/$m token.
+static int DumpDieSides(string clientDir, string build)
+{
+    using var archive = OpenPatchedDbc(clientDir);
+    var client = MakeDbcClient(archive);
+
+    var talents = client.ReadTalents(build);
+    var seen = new HashSet<int>();
+    foreach (var talent in talents)
+    {
+        foreach (var spellId in talent.SpellRanks)
+        {
+            if (spellId == 0 || !seen.Add(spellId)) continue;
+            var spell = client.GetSpell(build, spellId);
+            if (spell is null) continue;
+
+            for (var effIdx = 0; effIdx < spell.EffectDieSides.Length; effIdx++)
+            {
+                if (spell.EffectDieSides[effIdx] > 1)
+                {
+                    Console.WriteLine($"  spell {spellId} \"{spell.Name}\" effect[{effIdx}]: " +
+                        $"DieSides={spell.EffectDieSides[effIdx]} BasePoints={spell.EffectBasePoints[effIdx]} " +
+                        $"RealPointsPerLevel={spell.EffectRealPointsPerLevel[effIdx]}");
+                    Console.WriteLine($"    Description={spell.Description}");
+                }
+            }
+        }
+    }
 
     return 0;
 }
