@@ -74,56 +74,64 @@ const compareApp = createApp({
         };
     },
     computed: {
-        addedRows() {
-            if (!this.data) return [];
-            const rows = [];
+        // Classification is per RANK, independent of the matched talent's own overall
+        // status - a rank doesn't care what happened to its siblings. This matters for
+        // real cases like Hunter "Precision" -> "Humanoid Slaying" (same anchor spell id,
+        // see gotchas.md): ranks 1-3 still exist and changed, but ranks 4-5 no longer exist
+        // at all - those two individually belong in Removed, not nested inside a "Changed"
+        // row for a talent that, as a whole, still exists. Talent-level fields (position/
+        // tab/rank-count) have no rank of their own, so they ride along on rank 1's row
+        // specifically (forcing rank 1 into Changed even if its own content is identical,
+        // since *something* about the talent differs).
+        allRows() {
+            if (!this.data) return { added: [], changed: [], removed: [] };
+            const added = [], changed = [], removed = [];
             for (const t of this.data.talents) {
-                if (t.status !== 'added') continue;
-                for (const r of t.b.ranks) {
-                    rows.push({ anchorSpellId: t.anchorSpellId, rankIndex: r.rankIndex, maxRank: t.b.maxRank, rank: r, tabName: t.b.tabName });
+                if (t.status === 'unchanged') continue;
+
+                if (t.status === 'added') {
+                    for (const r of t.b.ranks) {
+                        added.push({ anchorSpellId: t.anchorSpellId, rankIndex: r.rankIndex, maxRank: t.b.maxRank, rank: r, tabName: t.b.tabName });
+                    }
+                    continue;
                 }
-            }
-            return rows;
-        },
-        removedRows() {
-            if (!this.data) return [];
-            const rows = [];
-            for (const t of this.data.talents) {
-                if (t.status !== 'removed') continue;
-                for (const r of t.a.ranks) {
-                    rows.push({ anchorSpellId: t.anchorSpellId, rankIndex: r.rankIndex, maxRank: t.a.maxRank, rank: r, tabName: t.a.tabName });
+                if (t.status === 'removed') {
+                    for (const r of t.a.ranks) {
+                        removed.push({ anchorSpellId: t.anchorSpellId, rankIndex: r.rankIndex, maxRank: t.a.maxRank, rank: r, tabName: t.a.tabName });
+                    }
+                    continue;
                 }
-            }
-            return rows;
-        },
-        // One row per rank that actually differs, plus rank 1 always carries any
-        // talent-level (position/tab/rank-count) changes even if rank 1's own fields
-        // didn't change - see talentLevelFields().
-        changedRows() {
-            if (!this.data) return [];
-            const rows = [];
-            for (const t of this.data.talents) {
-                if (t.status !== 'changed') continue;
+
+                // status === 'changed': the talent (matched by anchor spell id) exists on
+                // both sides, but individual ranks underneath it can still be pure adds/
+                // removes/changes of their own.
                 const ranksA = ranksByIndex(t.a);
                 const ranksB = ranksByIndex(t.b);
                 const rankIndices = Object.keys({ ...ranksA, ...ranksB }).map(Number).sort((x, y) => x - y);
                 for (const rankIndex of rankIndices) {
                     const ra = ranksA[rankIndex];
                     const rb = ranksB[rankIndex];
-                    const fields = [];
-                    if (rankIndex === 1) fields.push(...talentLevelFields(t.a, t.b));
-                    if (ra && rb) fields.push(...rankFields(ra, rb));
-                    else if (rb && !ra) fields.push({ label: 'Rank', before: 'Did not exist', after: 'Added' });
-                    else if (ra && !rb) fields.push({ label: 'Rank', before: 'Existed', after: 'Removed' });
+
+                    if (rb && !ra) {
+                        added.push({ anchorSpellId: t.anchorSpellId, rankIndex, maxRank: t.b.maxRank, rank: rb, tabName: t.b.tabName });
+                        continue;
+                    }
+                    if (ra && !rb) {
+                        removed.push({ anchorSpellId: t.anchorSpellId, rankIndex, maxRank: t.a.maxRank, rank: ra, tabName: t.a.tabName });
+                        continue;
+                    }
+
+                    const fields = rankIndex === 1 ? talentLevelFields(t.a, t.b) : [];
+                    fields.push(...rankFields(ra, rb));
                     if (fields.length === 0) continue;
-                    // Prefer the "after" (build B) version for the icon/name/tooltip - the
-                    // more relevant one when reading "what changed going into this build".
-                    const display = rb ?? ra;
-                    rows.push({ anchorSpellId: t.anchorSpellId, rankIndex, maxRank: (rb ?? ra) ? t.b.maxRank ?? t.a.maxRank : t.a.maxRank, rank: display, tabName: t.b.tabName, fields });
+                    changed.push({ anchorSpellId: t.anchorSpellId, rankIndex, maxRank: t.b.maxRank, rank: rb, tabName: t.b.tabName, fields });
                 }
             }
-            return rows;
+            return { added, changed, removed };
         },
+        addedRows() { return this.allRows.added; },
+        changedRows() { return this.allRows.changed; },
+        removedRows() { return this.allRows.removed; },
         tooltip() {
             if (!this.hoveredRank) return null;
             const rank = this.hoveredRank;
