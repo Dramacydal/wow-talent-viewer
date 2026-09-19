@@ -259,7 +259,7 @@ const compareApp = createApp({
                                               @mouseenter="showTooltip(rb.oldRank, $event)" @mousemove="showTooltip(rb.oldRank, $event)" @mouseleave="hideTooltip">
                                             (was
                                             <img v-if="rb.oldRank.iconUrl" :src="rb.oldRank.iconUrl" class="cmp-row-icon" alt="">
-                                            {{ rb.oldRank.name }})
+                                            {{ rb.oldRank.name }} (Rank {{ rb.rankIndex }}))
                                         </span>
                                     </div>
                                     <ul v-if="rb.kind === 'changed'" class="cmp-field-list">
