@@ -2,6 +2,7 @@ import { createApp } from 'vue';
 import './styles/talent-tree.css';
 import './styles/compare-tree.css';
 import { formatAbilityCost, formatAbilityRange, formatAbilityCastTime, formatAbilityCooldown } from './ability-format.js';
+import { diffWords } from './text-diff.js';
 
 // Position/tab are properties of the TALENT as a whole, not any one rank. Rank COUNT is
 // deliberately not listed here even though it's also talent-level - a rank-count change is
@@ -28,7 +29,10 @@ function talentLevelFields(a, b) {
 // instead ("NewName (was OldName)"), see groups()/the template.
 function rankFields(a, b) {
     const fields = [];
-    if (a.description !== b.description) fields.push({ label: 'Description', before: a.description, after: b.description });
+    // Rendered inline (struck-through old word / green new word within the sentence)
+    // instead of a before -> after pair - a full-sentence side-by-side reads far worse for a
+    // one-word tuning change (see diffWords()/the template).
+    if (a.description !== b.description) fields.push({ label: 'Description', diff: diffWords(a.description, b.description) });
     if (a.isAbility !== b.isAbility) {
         fields.push({ label: 'Ability status', before: a.isAbility ? 'Active ability' : 'Passive', after: b.isAbility ? 'Active ability' : 'Passive' });
     }
@@ -242,9 +246,14 @@ const compareApp = createApp({
                             <ul v-if="g.singleRank && g.rankBlocks[0]" class="cmp-field-list">
                                 <li v-for="f in g.rankBlocks[0].fields" :key="f.label" class="cmp-field-row">
                                     <span class="cmp-field-label">{{ f.label }}:</span>
-                                    <span class="cmp-field-before">{{ f.before }}</span>
-                                    <span class="cmp-field-arrow">→</span>
-                                    <span class="cmp-field-after">{{ f.after }}</span>
+                                    <template v-if="f.diff">
+                                        <span class="cmp-diff-text"><template v-for="(seg, si) in f.diff" :key="si"><span :class="{ 'cmp-diff-removed': seg.type === 'removed', 'cmp-diff-added': seg.type === 'added' }">{{ seg.text }}</span><template v-if="si < f.diff.length - 1">{{ ' ' }}</template></template></span>
+                                    </template>
+                                    <template v-else>
+                                        <span class="cmp-field-before">{{ f.before }}</span>
+                                        <span class="cmp-field-arrow">→</span>
+                                        <span class="cmp-field-after">{{ f.after }}</span>
+                                    </template>
                                 </li>
                             </ul>
 
@@ -265,9 +274,14 @@ const compareApp = createApp({
                                     <ul v-if="rb.kind === 'changed'" class="cmp-field-list">
                                         <li v-for="f in rb.fields" :key="f.label" class="cmp-field-row">
                                             <span class="cmp-field-label">{{ f.label }}:</span>
-                                            <span class="cmp-field-before">{{ f.before }}</span>
-                                            <span class="cmp-field-arrow">→</span>
-                                            <span class="cmp-field-after">{{ f.after }}</span>
+                                            <template v-if="f.diff">
+                                                <span class="cmp-diff-text"><template v-for="(seg, si) in f.diff" :key="si"><span :class="{ 'cmp-diff-removed': seg.type === 'removed', 'cmp-diff-added': seg.type === 'added' }">{{ seg.text }}</span><template v-if="si < f.diff.length - 1">{{ ' ' }}</template></template></span>
+                                            </template>
+                                            <template v-else>
+                                                <span class="cmp-field-before">{{ f.before }}</span>
+                                                <span class="cmp-field-arrow">→</span>
+                                                <span class="cmp-field-after">{{ f.after }}</span>
+                                            </template>
                                         </li>
                                     </ul>
                                 </div>

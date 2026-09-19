@@ -173,3 +173,21 @@
 .cmp-field-after {
     color: #3fd13f;
 }
+
+/* Inline word-level diff for the Description field (see diffWords() in text-diff.js) -
+   unchanged words stay plain text, changed ones get the same reds/greens as everything else
+   on this page, with a strikethrough on the removed word to tell it apart from the added one
+   without needing a before/after arrow layout. */
+.cmp-diff-text {
+    white-space: pre-wrap;
+}
+
+.cmp-diff-removed {
+    color: #ff4040;
+    text-decoration: line-through;
+    text-decoration-color: rgba(255, 64, 64, 0.5);
+}
+
+.cmp-diff-added {
+    color: #3fd13f;
+}
