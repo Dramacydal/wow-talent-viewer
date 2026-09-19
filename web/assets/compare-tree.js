@@ -222,9 +222,9 @@ const compareApp = createApp({
                             </span>
                             <span v-if="g.oldRank.name !== g.rank.name" class="cmp-row-was"
                                   @mouseenter="showTooltip(g.oldRank, $event)" @mousemove="showTooltip(g.oldRank, $event)" @mouseleave="hideTooltip">
-                                (was
+                                was
                                 <img v-if="g.oldRank.iconUrl" :src="g.oldRank.iconUrl" class="cmp-row-icon" alt="">
-                                {{ g.oldRank.name }})
+                                {{ g.oldRank.name }}
                             </span>
                             <span class="cmp-row-tab">{{ g.tabName }}</span>
                         </div>
@@ -257,9 +257,9 @@ const compareApp = createApp({
                                         </span>
                                         <span v-if="rb.kind === 'changed' && rb.oldRank.name !== rb.rank.name" class="cmp-row-was"
                                               @mouseenter="showTooltip(rb.oldRank, $event)" @mousemove="showTooltip(rb.oldRank, $event)" @mouseleave="hideTooltip">
-                                            (was
+                                            was
                                             <img v-if="rb.oldRank.iconUrl" :src="rb.oldRank.iconUrl" class="cmp-row-icon" alt="">
-                                            {{ rb.oldRank.name }} (Rank {{ rb.rankIndex }}))
+                                            {{ rb.oldRank.name }} (Rank {{ rb.rankIndex }})
                                         </span>
                                     </div>
                                     <ul v-if="rb.kind === 'changed'" class="cmp-field-list">
