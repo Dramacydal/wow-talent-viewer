@@ -51,6 +51,10 @@
     <script>
         (() => {
             const availableSlugsByBuildLabel = {{ availableSlugsByBuildLabel|json_encode|raw }};
+            // Empty string at the domain root, "/talents" (no trailing slash) when mounted
+            // under a sub-path via Apache Alias - see AssetUrlResolver/asset() for why a
+            // hand-built absolute path like "/tree/..." can't just be a string literal.
+            const basePath = {{ app.request.basePath|json_encode|raw }};
             const modeViewBtn = document.getElementById('home-mode-view');
             const modeCompareBtn = document.getElementById('home-mode-compare');
             const selectA = document.getElementById('home-build-select');
@@ -70,7 +74,7 @@
                     icon.hidden = !isAvailable;
                     if (isAvailable) {
                         anyVisible = true;
-                        icon.href = `/tree/${encodeURIComponent(buildLabel)}/${icon.dataset.slug}`;
+                        icon.href = `${basePath}/tree/${encodeURIComponent(buildLabel)}/${icon.dataset.slug}`;
                     }
                 }
                 emptyMessage.hidden = anyVisible;
@@ -98,7 +102,7 @@
                     icon.hidden = !isAvailable;
                     if (isAvailable) {
                         anyVisible = true;
-                        icon.href = `/compare/${encodeURIComponent(buildLabelA)}/${encodeURIComponent(buildLabelB)}/${icon.dataset.slug}`;
+                        icon.href = `${basePath}/compare/${encodeURIComponent(buildLabelA)}/${encodeURIComponent(buildLabelB)}/${icon.dataset.slug}`;
                     }
                 }
                 emptyMessage.hidden = anyVisible;

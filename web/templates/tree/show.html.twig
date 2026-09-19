@@ -43,10 +43,11 @@
     </div>
     <script>
         const ttForm = document.getElementById('tt-picker-form');
+        const ttBasePath = {{ app.request.basePath|json_encode|raw }};
         ttForm.addEventListener('change', () => {
             const build = ttForm.build.value;
             const cls = ttForm.class.value;
-            window.location.href = `/tree/${encodeURIComponent(build)}/${encodeURIComponent(cls)}`;
+            window.location.href = `${ttBasePath}/tree/${encodeURIComponent(build)}/${encodeURIComponent(cls)}`;
         });
 
         const ttSettingsGear = document.getElementById('tt-settings-gear');
