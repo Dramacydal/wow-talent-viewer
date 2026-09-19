@@ -13,12 +13,21 @@
                     <option value="{{ b.label }}" {{ b.label == build.label ? 'selected' : '' }}>{{ b.label }}</option>
                 {% endfor %}
             </select>
-            <select name="class">
-                {% for c in allClasses %}
-                    <option value="{{ c.slug }}" {{ c.slug == class.slug ? 'selected' : '' }}>{{ c.name }}</option>
-                {% endfor %}
-            </select>
         </form>
+        {% set availableSlugs = availableSlugsByBuildLabel[build.label] ?? [] %}
+        <div class="tt-class-picker">
+            {% for c in allClasses %}
+                {% if c.slug in availableSlugs %}
+                    <a class="tt-class-icon {{ c.slug == class.slug ? 'tt-class-icon--active' : '' }}"
+                       href="{{ path('talent_tree_page', { buildLabel: build.label, classSlug: c.slug }) }}"
+                       title="{{ c.name }}">
+                        {% if c.iconPath %}
+                            <img class="tt-class-icon-img" src="{{ asset('class-icons/' ~ c.iconPath ~ '.png') }}" alt="{{ c.name }}">
+                        {% endif %}
+                    </a>
+                {% endif %}
+            {% endfor %}
+        </div>
         <button id="tt-settings-gear" class="tt-settings-gear" type="button" title="Settings">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18">
                 <circle cx="12" cy="12" r="3"></circle>
@@ -44,10 +53,12 @@
     <script>
         const ttForm = document.getElementById('tt-picker-form');
         const ttBasePath = {{ app.request.basePath|json_encode|raw }};
-        ttForm.addEventListener('change', () => {
-            const build = ttForm.build.value;
-            const cls = ttForm.class.value;
-            window.location.href = `${ttBasePath}/tree/${encodeURIComponent(build)}/${encodeURIComponent(cls)}`;
+        // Switching build re-renders server-side (class-icon availability can differ per
+        // build - see tt-class-picker above), so this just navigates to the same class slug
+        // on the newly-picked build; if that class isn't available there, the backend 404s
+        // the same way a stale/bookmarked URL would - no special-casing needed here.
+        ttForm.build.addEventListener('change', () => {
+            window.location.href = `${ttBasePath}/tree/${encodeURIComponent(ttForm.build.value)}/{{ class.slug }}`;
         });
 
         const ttSettingsGear = document.getElementById('tt-settings-gear');

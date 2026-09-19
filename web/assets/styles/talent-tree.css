@@ -62,6 +62,36 @@ body {
     border-color: var(--tt-gold);
 }
 
+.tt-class-picker {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.tt-class-icon {
+    display: block;
+    line-height: 0;
+}
+
+.tt-class-icon-img {
+    display: block;
+    width: 28px;
+    height: 28px;
+    border-radius: 4px;
+    border: 1px solid var(--tt-panel-border);
+    transition: border-color 0.15s, transform 0.15s;
+}
+
+.tt-class-icon:hover .tt-class-icon-img {
+    border-color: var(--tt-gold);
+    transform: translateY(-1px);
+}
+
+.tt-class-icon--active .tt-class-icon-img {
+    border-color: var(--tt-gold);
+    box-shadow: 0 0 0 1px var(--tt-gold);
+}
+
 .tt-settings-gear {
     margin-left: auto;
     background: var(--tt-panel);

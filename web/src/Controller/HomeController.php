@@ -47,6 +47,7 @@ class HomeController extends AbstractController
             'class' => $class,
             'allBuilds' => $builds->findAllOrderedByBuildNumber(),
             'allClasses' => $classes->findAllOrderedById(),
+            'availableSlugsByBuildLabel' => $classes->findAvailableSlugsByBuildLabel(),
         ]);
     }
 
