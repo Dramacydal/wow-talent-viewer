@@ -336,12 +336,18 @@ body {
     left: 0;
     pointer-events: none;
     overflow: visible;
+    /* Dark outline around the lines AND arrowheads (filter applies to the whole SVG's
+       painted output, markers included) - no single stroke color reads well against both
+       the darkest and lightest tab background art, so instead of chasing a "neutral" gray,
+       this pulls the line away from whatever is behind it regardless of its brightness.
+       Stacked twice at a small radius to get a near-solid outline rather than one soft blur. */
+    filter: drop-shadow(0 0 1px #000) drop-shadow(0 0 1px #000);
 }
 
 .tt-connectors polyline {
     fill: none;
     stroke: #6b6b6b;
-    stroke-width: 3;
+    stroke-width: 4.5;
 }
 
 .tt-connectors polyline.tt-connector-active {
