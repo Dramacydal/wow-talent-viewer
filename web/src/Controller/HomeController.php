@@ -49,4 +49,27 @@ class HomeController extends AbstractController
             'allClasses' => $classes->findAllOrderedById(),
         ]);
     }
+
+    /** Placeholder page - just proves the landing page's Compare mode navigates somewhere
+     * real and the /api/compare endpoint is reachable from it. The actual visualization is
+     * a separate, not-yet-designed pass (see .claude-docs/gotchas.md if that note ever gets
+     * added, or just ask - this was deliberately left minimal). */
+    #[Route('/compare/{buildLabelA}/{buildLabelB}/{classSlug}', name: 'talent_compare_page', methods: ['GET'])]
+    public function compare(
+        string $buildLabelA,
+        string $buildLabelB,
+        string $classSlug,
+        ClientBuildRepository $builds,
+        CharacterClassRepository $classes,
+    ): Response {
+        $buildA = $builds->findOneByLabel($buildLabelA) ?? throw new NotFoundHttpException("Unknown build \"$buildLabelA\"");
+        $buildB = $builds->findOneByLabel($buildLabelB) ?? throw new NotFoundHttpException("Unknown build \"$buildLabelB\"");
+        $class = $classes->findOneBySlug($classSlug) ?? throw new NotFoundHttpException("Unknown class \"$classSlug\"");
+
+        return $this->render('compare/show.html.twig', [
+            'buildA' => $buildA,
+            'buildB' => $buildB,
+            'class' => $class,
+        ]);
+    }
 }

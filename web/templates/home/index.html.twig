@@ -6,11 +6,25 @@
     <main class="home">
         <h1 class="home-title">WoW Vanilla Talents Viewer</h1>
 
-        <select id="home-build-select" class="home-build-select">
-            {% for build in builds %}
-                <option value="{{ build.label }}" {{ build.label == selectedBuild.label ? 'selected' : '' }}>{{ build.label }}</option>
-            {% endfor %}
-        </select>
+        <div class="home-mode-toggle" role="group" aria-label="Mode">
+            <button type="button" id="home-mode-view" aria-pressed="true">View</button>
+            <button type="button" id="home-mode-compare" aria-pressed="false">Compare</button>
+        </div>
+
+        <div class="home-build-row">
+            <select id="home-build-select" class="home-build-select">
+                {% for build in builds %}
+                    <option value="{{ build.label }}" {{ build.label == selectedBuild.label ? 'selected' : '' }}>{{ build.label }}</option>
+                {% endfor %}
+            </select>
+            <span id="home-build-vs" class="home-build-row-vs" hidden>vs</span>
+            <select id="home-build-select-b" class="home-build-select" hidden>
+                {% for build in builds %}
+                    <option value="{{ build.label }}" {{ loop.last ? 'selected' : '' }}>{{ build.label }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <p id="home-build-row-hint" class="home-build-row-hint" hidden>Pick two different builds to compare.</p>
 
         {% set classAbbreviations = {
             warrior: 'WAR', paladin: 'PAL', hunter: 'HUN', rogue: 'ROG', priest: 'PRI',
@@ -37,11 +51,18 @@
     <script>
         (() => {
             const availableSlugsByBuildLabel = {{ availableSlugsByBuildLabel|json_encode|raw }};
-            const select = document.getElementById('home-build-select');
+            const modeViewBtn = document.getElementById('home-mode-view');
+            const modeCompareBtn = document.getElementById('home-mode-compare');
+            const selectA = document.getElementById('home-build-select');
+            const selectB = document.getElementById('home-build-select-b');
+            const vsLabel = document.getElementById('home-build-vs');
             const icons = Array.from(document.querySelectorAll('#home-class-row .class-icon'));
             const emptyMessage = document.getElementById('home-class-row-empty');
+            const sameBuildHint = document.getElementById('home-build-row-hint');
 
-            function applyBuild(buildLabel) {
+            let mode = 'view';
+
+            function applyView(buildLabel) {
                 const slugs = new Set(availableSlugsByBuildLabel[buildLabel] || []);
                 let anyVisible = false;
                 for (const icon of icons) {
@@ -53,15 +74,71 @@
                     }
                 }
                 emptyMessage.hidden = anyVisible;
+                sameBuildHint.hidden = true;
             }
 
-            select.addEventListener('change', (e) => {
-                const buildLabel = e.target.value;
-                applyBuild(buildLabel);
-                const url = new URL(window.location.href);
-                url.searchParams.set('build', buildLabel);
-                history.replaceState(null, '', url);
+            // A class can only be compared if it has talent data on BOTH builds - comparing
+            // against a build where the class doesn't exist at all (e.g. Paladin before
+            // 0.9.0.3807, Warlock before 0.11.0.3925 - see .claude-docs/gotchas.md on the
+            // class rollout) has nothing to diff.
+            function applyCompare(buildLabelA, buildLabelB) {
+                if (buildLabelA === buildLabelB) {
+                    for (const icon of icons) icon.hidden = true;
+                    emptyMessage.hidden = true;
+                    sameBuildHint.hidden = false;
+                    return;
+                }
+                sameBuildHint.hidden = true;
+
+                const slugsA = new Set(availableSlugsByBuildLabel[buildLabelA] || []);
+                const slugsB = new Set(availableSlugsByBuildLabel[buildLabelB] || []);
+                let anyVisible = false;
+                for (const icon of icons) {
+                    const isAvailable = slugsA.has(icon.dataset.slug) && slugsB.has(icon.dataset.slug);
+                    icon.hidden = !isAvailable;
+                    if (isAvailable) {
+                        anyVisible = true;
+                        icon.href = `/compare/${encodeURIComponent(buildLabelA)}/${encodeURIComponent(buildLabelB)}/${icon.dataset.slug}`;
+                    }
+                }
+                emptyMessage.hidden = anyVisible;
+            }
+
+            function refresh() {
+                if (mode === 'view') {
+                    applyView(selectA.value);
+                } else {
+                    applyCompare(selectA.value, selectB.value);
+                }
+            }
+
+            modeViewBtn.addEventListener('click', () => {
+                mode = 'view';
+                modeViewBtn.setAttribute('aria-pressed', 'true');
+                modeCompareBtn.setAttribute('aria-pressed', 'false');
+                vsLabel.hidden = true;
+                selectB.hidden = true;
+                refresh();
             });
+
+            modeCompareBtn.addEventListener('click', () => {
+                mode = 'compare';
+                modeCompareBtn.setAttribute('aria-pressed', 'true');
+                modeViewBtn.setAttribute('aria-pressed', 'false');
+                vsLabel.hidden = false;
+                selectB.hidden = false;
+                refresh();
+            });
+
+            selectA.addEventListener('change', () => {
+                if (mode === 'view') {
+                    const url = new URL(window.location.href);
+                    url.searchParams.set('build', selectA.value);
+                    history.replaceState(null, '', url);
+                }
+                refresh();
+            });
+            selectB.addEventListener('change', refresh);
         })();
     </script>
 {% endblock %}

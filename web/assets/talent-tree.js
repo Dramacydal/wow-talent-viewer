@@ -1,5 +1,6 @@
 import { createApp } from 'vue';
 import './styles/talent-tree.css';
+import { formatAbilityCost, formatAbilityRange, formatAbilityCastTime, formatAbilityCooldown } from './ability-format.js';
 
 /**
  * Interactive vanilla talent tree: click-to-spend grid per tab (tier x column, 4 columns
@@ -28,45 +29,6 @@ const MAX_TALENT_POINTS = 51;
 // by tabArtStyle() (the background art box's height must never depend on a tab's own
 // talent count - see that method).
 const MIN_TIER_ROWS = 7;
-
-// The only 3 power types that occur on player talent abilities in vanilla - see
-// BuildExtractor.ResolveAbilityFields / .claude-docs/gotchas.md.
-const POWER_TYPE_NAMES = { 0: 'Mana', 1: 'Rage', 3: 'Energy' };
-
-// Trims a fractional value to at most 2 decimals without trailing zeros (1.50 -> "1.5",
-// 3.00 -> "3") - cast time/cooldown/range can all carry real fractional parts.
-function trimNumber(n) {
-    return Number(n.toFixed(2)).toString();
-}
-
-// wowhead-tooltip-style cost/range/cast-time/cooldown lines for an "active ability" rank
-// (see talent_ranks.is_ability - a talent that grants a usable, castable ability rather
-// than being a pure passive). Each returns null when that side has nothing to show, so the
-// template can render just the other side (a lone flex child in a `justify-content:
-// space-between` row naturally sits at the start/left - see .tt-tooltip-row CSS).
-function formatAbilityCost(rank) {
-    if (!rank.powerCost) return null;
-    return `${rank.powerCost} ${POWER_TYPE_NAMES[rank.powerType] ?? rank.powerType}`;
-}
-
-function formatAbilityRange(rank) {
-    if (rank.isMeleeRange) return 'Melee Range';
-    if (!rank.rangeMaxYards) return null;
-    const max = trimNumber(rank.rangeMaxYards);
-    return rank.rangeMinYards ? `${trimNumber(rank.rangeMinYards)}-${max} yd range` : `${max} yd range`;
-}
-
-function formatAbilityCastTime(rank) {
-    if (rank.castTimeMs === null || rank.castTimeMs === undefined) return null;
-    return rank.castTimeMs === 0 ? 'Instant cast' : `${trimNumber(rank.castTimeMs / 1000)} sec cast`;
-}
-
-function formatAbilityCooldown(rank) {
-    if (!rank.cooldownMs) return null;
-    return rank.cooldownMs > 60000
-        ? `${trimNumber(rank.cooldownMs / 60000)} min cooldown`
-        : `${trimNumber(rank.cooldownMs / 1000)} sec cooldown`;
-}
 
 function cellCenter(tier, columnIndex) {
     return {

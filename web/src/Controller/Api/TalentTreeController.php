@@ -2,6 +2,7 @@
 
 namespace App\Controller\Api;
 
+use App\Asset\AssetUrlResolver;
 use App\Entity\Talent;
 use App\Entity\TalentTab;
 use App\Repository\CharacterClassRepository;
@@ -56,12 +57,12 @@ class TalentTreeController extends AbstractController
                 fn (TalentTab $tab) => [
                     'id' => $tab->getId(),
                     'name' => $tab->getName(),
-                    'iconUrl' => self::iconUrl($tab->getIconPath()),
+                    'iconUrl' => AssetUrlResolver::iconUrl($tab->getIconPath()),
                     'background' => [
-                        'topLeft' => self::backgroundUrl($tab->getBackgroundTopLeftPath()),
-                        'topRight' => self::backgroundUrl($tab->getBackgroundTopRightPath()),
-                        'bottomLeft' => self::backgroundUrl($tab->getBackgroundBottomLeftPath()),
-                        'bottomRight' => self::backgroundUrl($tab->getBackgroundBottomRightPath()),
+                        'topLeft' => AssetUrlResolver::backgroundUrl($tab->getBackgroundTopLeftPath()),
+                        'topRight' => AssetUrlResolver::backgroundUrl($tab->getBackgroundTopRightPath()),
+                        'bottomLeft' => AssetUrlResolver::backgroundUrl($tab->getBackgroundBottomLeftPath()),
+                        'bottomRight' => AssetUrlResolver::backgroundUrl($tab->getBackgroundBottomRightPath()),
                     ],
                     'talents' => array_map(
                         fn (Talent $talent) => [
@@ -76,7 +77,7 @@ class TalentTreeController extends AbstractController
                                     'rankIndex' => $rank->getRankIndex(),
                                     'name' => $rank->getName(),
                                     'description' => $rank->getDescription(),
-                                    'iconUrl' => self::iconUrl($rank->getIconPath()),
+                                    'iconUrl' => AssetUrlResolver::iconUrl($rank->getIconPath()),
                                     'isAbility' => $rank->isAbility(),
                                     'powerType' => $rank->getPowerType(),
                                     'powerCost' => $rank->getPowerCost(),
@@ -97,15 +98,5 @@ class TalentTreeController extends AbstractController
                 $tabEntities,
             ),
         ]);
-    }
-
-    private static function iconUrl(?string $iconPath): ?string
-    {
-        return $iconPath === null ? null : "/icons/$iconPath.png";
-    }
-
-    private static function backgroundUrl(?string $iconPath): ?string
-    {
-        return $iconPath === null ? null : "/backgrounds/$iconPath.png";
     }
 }

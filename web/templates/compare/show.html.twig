@@ -1,0 +1,18 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}{{ class.name }} - {{ buildA.label }} vs {{ buildB.label }} - WoW Vanilla Talents Viewer{% endblock %}
+
+{% block importmap %}{{ importmap('compare-tree') }}{% endblock %}
+
+{% block body %}
+    <main style="max-width: 700px; margin: 0 auto; padding: 40px 16px;">
+        <p><a href="{{ path('home') }}" style="color: var(--tt-text-dim);">&larr; Home</a></p>
+        <h1 class="cmp-header">
+            {% if class.iconPath %}
+                <img class="cmp-header-icon" src="/class-icons/{{ class.iconPath }}.png" alt="{{ class.name }}">
+            {% endif %}
+            <span>{{ buildA.label }} vs {{ buildB.label }}</span>
+        </h1>
+        <div id="compare-tree-app" data-compare-url="{{ path('api_talent_tree_compare', { buildLabelA: buildA.label, buildLabelB: buildB.label, classSlug: class.slug }) }}"></div>
+    </main>
+{% endblock %}
