@@ -17,6 +17,16 @@
     vertical-align: -0.15em;
 }
 
+.cmp-header-build-link {
+    color: var(--tt-gold);
+    text-decoration: none;
+    border-bottom: 1px dotted var(--tt-panel-border);
+}
+
+.cmp-header-build-link:hover {
+    border-bottom-color: var(--tt-gold);
+}
+
 .cmp-section {
     margin-bottom: 24px;
 }
