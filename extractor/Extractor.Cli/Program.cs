@@ -46,6 +46,7 @@ return args[0] switch
     "dump-shapeshift-forms" => DumpShapeshiftForms(args[1], args[2]),
     "dump-equip-patterns" => DumpEquipPatterns(args[1], args[2]),
     "dump-die-sides" => DumpDieSides(args[1], args[2]),
+    "dump-sign-mismatch" => DumpSignMismatch(args[1], args[2]),
     _ => Fail($"Unknown command: {args[0]}")
 };
 
@@ -491,6 +492,42 @@ static int DumpDieSides(string clientDir, string build)
                         $"RealPointsPerLevel={spell.EffectRealPointsPerLevel[effIdx]}");
                     Console.WriteLine($"    Description={spell.Description}");
                 }
+            }
+        }
+    }
+
+    return 0;
+}
+
+// Diagnostic: is "EffectBasePoints+1 and EffectRealPointsPerLevel have opposite, both-nonzero
+// signs" (the case that makes Abs(BASE)+Abs(COEFF)*Level differ from the correct
+// Abs(BASE+COEFF*Level) - see gotchas.md/SpellDescriptionFormatter.cs) an actually-real
+// pattern in this dataset, or only a hypothetical one nobody's hit yet.
+static int DumpSignMismatch(string clientDir, string build)
+{
+    using var archive = OpenPatchedDbc(clientDir);
+    var client = MakeDbcClient(archive);
+
+    var talents = client.ReadTalents(build);
+    var seen = new HashSet<int>();
+    foreach (var talent in talents)
+    {
+        foreach (var spellId in talent.SpellRanks)
+        {
+            if (spellId == 0 || !seen.Add(spellId)) continue;
+            var spell = client.GetSpell(build, spellId);
+            if (spell is null) continue;
+
+            for (var effIdx = 0; effIdx < spell.EffectRealPointsPerLevel.Length; effIdx++)
+            {
+                var basePlusOne = spell.EffectBasePoints[effIdx] + 1;
+                var perLevel = spell.EffectRealPointsPerLevel[effIdx];
+                if (perLevel == 0 || basePlusOne == 0) continue;
+                if (Math.Sign(basePlusOne) == Math.Sign(perLevel)) continue;
+
+                Console.WriteLine($"  spell {spellId} \"{spell.Name}\" effect[{effIdx}]: " +
+                    $"BasePoints+1={basePlusOne} RealPointsPerLevel={perLevel}");
+                Console.WriteLine($"    Description={spell.Description}");
             }
         }
     }

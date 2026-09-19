@@ -203,10 +203,15 @@ public sealed partial class SpellDescriptionFormatter(DbcClient dbcClient, strin
         string OneSide(double baseValue) => perLevel == 0
             ? FormatNumber(Math.Abs(baseValue))
             // "BASE + " is skipped when BASE is exactly 0 - "{1.67 * Level}" instead of
-            // "{0 + 1.67 * Level}", no information lost by omitting a no-op addend.
+            // "{0 + 1.67 * Level}", no information lost by omitting a no-op addend. When
+            // BASE is nonzero AND coeff is negative, join with "-" and coeff's magnitude
+            // ("{10 - 1.11 * Level}") instead of "+" and a signed literal ("{10 + -1.11 *
+            // Level}") - same value, not a double-sign eyesore in the stored/diffed text.
             : baseValue == 0
                 ? "{" + FormatNumber(coeff) + " * Level}"
-                : "{" + FormatNumber(baseValue) + " + " + FormatNumber(coeff) + " * Level}";
+                : coeff < 0
+                    ? "{" + FormatNumber(baseValue) + " - " + FormatNumber(-coeff) + " * Level}"
+                    : "{" + FormatNumber(baseValue) + " + " + FormatNumber(coeff) + " * Level}";
 
         var min = OneSide(minBase);
         return dieSides > 1 ? $"{min} to {OneSide(maxBase)}" : min;
