@@ -58,6 +58,14 @@
     transform: rotate(90deg);
 }
 
+.cmp-talent-toggle {
+    cursor: pointer;
+}
+
+.cmp-talent-toggle:hover {
+    color: var(--tt-gold);
+}
+
 .cmp-row-list {
     list-style: none;
     margin: 0;

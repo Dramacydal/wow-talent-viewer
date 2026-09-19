@@ -60,6 +60,10 @@ const compareApp = createApp({
             data: null,
             error: null,
             collapsed: { added: false, changed: false, removed: false },
+            // Per-talent collapse state in the Changed section, keyed by anchorSpellId -
+            // absent/falsy means expanded (the default). A plain object works fine here:
+            // Vue 3's reactive() proxy tracks new-key assignment, unlike Vue 2.
+            collapsedTalents: {},
             hoveredRank: null,
             tooltipStyle: { left: '0px', top: '0px' },
         };
@@ -164,6 +168,12 @@ const compareApp = createApp({
         toggleSection(key) {
             this.collapsed[key] = !this.collapsed[key];
         },
+        isTalentCollapsed(anchorSpellId) {
+            return !!this.collapsedTalents[anchorSpellId];
+        },
+        toggleTalent(anchorSpellId) {
+            this.collapsedTalents[anchorSpellId] = !this.collapsedTalents[anchorSpellId];
+        },
         showTooltip(rank, event) {
             this.hoveredRank = rank;
             const wouldSqueeze = event.clientX + 16 + 280 > window.innerWidth;
@@ -203,6 +213,7 @@ const compareApp = createApp({
                 <ul v-if="!collapsed.changed" class="cmp-row-list">
                     <li v-for="g in changedGroups" :key="g.anchorSpellId" class="cmp-row-block">
                         <div class="cmp-row cmp-row-changed">
+                            <svg class="cmp-section-toggle cmp-talent-toggle" :class="{ 'cmp-section-toggle-open': !isTalentCollapsed(g.anchorSpellId) }" @click="toggleTalent(g.anchorSpellId)" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><polyline points="9 6 15 12 9 18"></polyline></svg>
                             <span class="cmp-row-hoverable" @mouseenter="showTooltip(g.rank, $event)" @mousemove="showTooltip(g.rank, $event)" @mouseleave="hideTooltip">
                                 <img v-if="g.rank.iconUrl" :src="g.rank.iconUrl" class="cmp-row-icon" alt="">
                                 <span>{{ g.rank.name }}</span>
@@ -210,41 +221,43 @@ const compareApp = createApp({
                             <span class="cmp-row-tab">{{ g.tabName }}</span>
                         </div>
 
-                        <ul v-if="g.talentFields.length" class="cmp-field-list">
-                            <li v-for="f in g.talentFields" :key="f.label" class="cmp-field-row">
-                                <span class="cmp-field-label">{{ f.label }}:</span>
-                                <span class="cmp-field-before">{{ f.before }}</span>
-                                <span class="cmp-field-arrow">→</span>
-                                <span class="cmp-field-after">{{ f.after }}</span>
-                            </li>
-                        </ul>
+                        <template v-if="!isTalentCollapsed(g.anchorSpellId)">
+                            <ul v-if="g.talentFields.length" class="cmp-field-list">
+                                <li v-for="f in g.talentFields" :key="f.label" class="cmp-field-row">
+                                    <span class="cmp-field-label">{{ f.label }}:</span>
+                                    <span class="cmp-field-before">{{ f.before }}</span>
+                                    <span class="cmp-field-arrow">→</span>
+                                    <span class="cmp-field-after">{{ f.after }}</span>
+                                </li>
+                            </ul>
 
-                        <ul v-if="g.singleRank && g.rankBlocks[0]" class="cmp-field-list">
-                            <li v-for="f in g.rankBlocks[0].fields" :key="f.label" class="cmp-field-row">
-                                <span class="cmp-field-label">{{ f.label }}:</span>
-                                <span class="cmp-field-before">{{ f.before }}</span>
-                                <span class="cmp-field-arrow">→</span>
-                                <span class="cmp-field-after">{{ f.after }}</span>
-                            </li>
-                        </ul>
+                            <ul v-if="g.singleRank && g.rankBlocks[0]" class="cmp-field-list">
+                                <li v-for="f in g.rankBlocks[0].fields" :key="f.label" class="cmp-field-row">
+                                    <span class="cmp-field-label">{{ f.label }}:</span>
+                                    <span class="cmp-field-before">{{ f.before }}</span>
+                                    <span class="cmp-field-arrow">→</span>
+                                    <span class="cmp-field-after">{{ f.after }}</span>
+                                </li>
+                            </ul>
 
-                        <template v-if="!g.singleRank">
-                            <div v-for="rb in g.rankBlocks" :key="rb.rankIndex" class="cmp-rank-block">
-                                <div class="cmp-row" :class="{ 'cmp-row-added': rb.kind === 'added', 'cmp-row-removed': rb.kind === 'removed', 'cmp-row-changed': rb.kind === 'changed' }">
-                                    <span class="cmp-row-hoverable" @mouseenter="showTooltip(rb.rank, $event)" @mousemove="showTooltip(rb.rank, $event)" @mouseleave="hideTooltip">
-                                        <img v-if="rb.rank.iconUrl" :src="rb.rank.iconUrl" class="cmp-row-icon" alt="">
-                                        <span>{{ rb.rank.name }} (Rank {{ rb.rankIndex }})</span>
-                                    </span>
+                            <template v-if="!g.singleRank">
+                                <div v-for="rb in g.rankBlocks" :key="rb.rankIndex" class="cmp-rank-block">
+                                    <div class="cmp-row" :class="{ 'cmp-row-added': rb.kind === 'added', 'cmp-row-removed': rb.kind === 'removed', 'cmp-row-changed': rb.kind === 'changed' }">
+                                        <span class="cmp-row-hoverable" @mouseenter="showTooltip(rb.rank, $event)" @mousemove="showTooltip(rb.rank, $event)" @mouseleave="hideTooltip">
+                                            <img v-if="rb.rank.iconUrl" :src="rb.rank.iconUrl" class="cmp-row-icon" alt="">
+                                            <span>{{ rb.rank.name }} (Rank {{ rb.rankIndex }})</span>
+                                        </span>
+                                    </div>
+                                    <ul v-if="rb.kind === 'changed'" class="cmp-field-list">
+                                        <li v-for="f in rb.fields" :key="f.label" class="cmp-field-row">
+                                            <span class="cmp-field-label">{{ f.label }}:</span>
+                                            <span class="cmp-field-before">{{ f.before }}</span>
+                                            <span class="cmp-field-arrow">→</span>
+                                            <span class="cmp-field-after">{{ f.after }}</span>
+                                        </li>
+                                    </ul>
                                 </div>
-                                <ul v-if="rb.kind === 'changed'" class="cmp-field-list">
-                                    <li v-for="f in rb.fields" :key="f.label" class="cmp-field-row">
-                                        <span class="cmp-field-label">{{ f.label }}:</span>
-                                        <span class="cmp-field-before">{{ f.before }}</span>
-                                        <span class="cmp-field-arrow">→</span>
-                                        <span class="cmp-field-after">{{ f.after }}</span>
-                                    </li>
-                                </ul>
-                            </div>
+                            </template>
                         </template>
                     </li>
                 </ul>
