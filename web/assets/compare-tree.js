@@ -23,10 +23,11 @@ function talentLevelFields(a, b) {
 
 // Every rank-level field this project already resolves and verifies against real client
 // data (see BuildExtractor.ResolveAbilityFields/ResolveStanceRequirement/
-// ResolveEquipRequirement) - compared pairwise, only differing ones produce a line.
+// ResolveEquipRequirement) - compared pairwise, only differing ones produce a line. A name
+// change is NOT one of these fields - it's shown inline next to the rank's own header
+// instead ("NewName (was OldName)"), see groups()/the template.
 function rankFields(a, b) {
     const fields = [];
-    if (a.name !== b.name) fields.push({ label: 'Name', before: a.name, after: b.name });
     if (a.description !== b.description) fields.push({ label: 'Description', before: a.description, after: b.description });
     if (a.isAbility !== b.isAbility) {
         fields.push({ label: 'Ability status', before: a.isAbility ? 'Active ability' : 'Passive', after: b.isAbility ? 'Active ability' : 'Passive' });
@@ -117,13 +118,14 @@ const compareApp = createApp({
                         continue;
                     }
                     const fields = rankFields(ra, rb);
-                    if (fields.length === 0) continue;
-                    rankBlocks.push({ rankIndex, kind: 'changed', rank: rb, fields });
+                    if (fields.length === 0 && ra.name === rb.name) continue;
+                    rankBlocks.push({ rankIndex, kind: 'changed', rank: rb, oldRank: ra, fields });
                 }
 
                 changed.push({
                     anchorSpellId: t.anchorSpellId,
                     rank: ranksB[1] ?? ranksA[1],
+                    oldRank: ranksA[1] ?? ranksB[1],
                     maxRank,
                     tabName: t.b.tabName,
                     talentFields,
@@ -218,6 +220,11 @@ const compareApp = createApp({
                                 <img v-if="g.rank.iconUrl" :src="g.rank.iconUrl" class="cmp-row-icon" alt="">
                                 <span>{{ g.rank.name }}</span>
                             </span>
+                            <span v-if="g.oldRank.name !== g.rank.name" class="cmp-row-was">
+                                (was
+                                <img v-if="g.oldRank.iconUrl" :src="g.oldRank.iconUrl" class="cmp-row-icon" alt="">
+                                {{ g.oldRank.name }})
+                            </span>
                             <span class="cmp-row-tab">{{ g.tabName }}</span>
                         </div>
 
@@ -246,6 +253,11 @@ const compareApp = createApp({
                                         <span class="cmp-row-hoverable" @mouseenter="showTooltip(rb.rank, $event)" @mousemove="showTooltip(rb.rank, $event)" @mouseleave="hideTooltip">
                                             <img v-if="rb.rank.iconUrl" :src="rb.rank.iconUrl" class="cmp-row-icon" alt="">
                                             <span>{{ rb.rank.name }} (Rank {{ rb.rankIndex }})</span>
+                                        </span>
+                                        <span v-if="rb.kind === 'changed' && rb.oldRank.name !== rb.rank.name" class="cmp-row-was">
+                                            (was
+                                            <img v-if="rb.oldRank.iconUrl" :src="rb.oldRank.iconUrl" class="cmp-row-icon" alt="">
+                                            {{ rb.oldRank.name }})
                                         </span>
                                     </div>
                                     <ul v-if="rb.kind === 'changed'" class="cmp-field-list">

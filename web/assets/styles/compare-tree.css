@@ -109,6 +109,17 @@
     font-size: 12px;
 }
 
+/* "(was <icon> OldName)" next to a changed talent/rank header - replaces the old
+   "Name: X -> Y" field-diff line entirely (see rankFields() in compare-tree.js). */
+.cmp-row-was {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    color: var(--tt-text-dim);
+    font-size: 12px;
+    font-style: italic;
+}
+
 .cmp-row-tab {
     color: var(--tt-text-dim);
     font-size: 12px;
