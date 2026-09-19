@@ -151,10 +151,10 @@ body {
 }
 
 .tt-header-icon {
-    width: 1em;
-    height: 1em;
+    width: 1.5em;
+    height: 1.5em;
     border-radius: 4px;
-    vertical-align: -0.15em;
+    vertical-align: -0.35em;
 }
 
 .tt-summary {
