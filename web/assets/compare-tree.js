@@ -10,7 +10,10 @@ import { formatAbilityCost, formatAbilityRange, formatAbilityCastTime, formatAbi
 function talentLevelFields(a, b) {
     const fields = [];
     if (a.tier !== b.tier || a.columnIndex !== b.columnIndex) {
-        fields.push({ label: 'Position', before: `Tier ${a.tier}, Column ${a.columnIndex}`, after: `Tier ${b.tier}, Column ${b.columnIndex}` });
+        // tier/columnIndex are 0-based internally (matches the grid data everywhere else
+        // in this project - see .claude-docs/architecture.md), but a player thinks in
+        // 1-based row/column numbers - +1 here for display only.
+        fields.push({ label: 'Position', before: `Tier ${a.tier + 1}, Column ${a.columnIndex + 1}`, after: `Tier ${b.tier + 1}, Column ${b.columnIndex + 1}` });
     }
     if (a.tabName !== b.tabName) {
         fields.push({ label: 'Tab', before: a.tabName, after: b.tabName });
