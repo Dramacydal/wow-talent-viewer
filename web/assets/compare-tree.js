@@ -220,7 +220,8 @@ const compareApp = createApp({
                                 <img v-if="g.rank.iconUrl" :src="g.rank.iconUrl" class="cmp-row-icon" alt="">
                                 <span>{{ g.rank.name }}</span>
                             </span>
-                            <span v-if="g.oldRank.name !== g.rank.name" class="cmp-row-was">
+                            <span v-if="g.oldRank.name !== g.rank.name" class="cmp-row-was"
+                                  @mouseenter="showTooltip(g.oldRank, $event)" @mousemove="showTooltip(g.oldRank, $event)" @mouseleave="hideTooltip">
                                 (was
                                 <img v-if="g.oldRank.iconUrl" :src="g.oldRank.iconUrl" class="cmp-row-icon" alt="">
                                 {{ g.oldRank.name }})
@@ -254,7 +255,8 @@ const compareApp = createApp({
                                             <img v-if="rb.rank.iconUrl" :src="rb.rank.iconUrl" class="cmp-row-icon" alt="">
                                             <span>{{ rb.rank.name }} (Rank {{ rb.rankIndex }})</span>
                                         </span>
-                                        <span v-if="rb.kind === 'changed' && rb.oldRank.name !== rb.rank.name" class="cmp-row-was">
+                                        <span v-if="rb.kind === 'changed' && rb.oldRank.name !== rb.rank.name" class="cmp-row-was"
+                                              @mouseenter="showTooltip(rb.oldRank, $event)" @mousemove="showTooltip(rb.oldRank, $event)" @mouseleave="hideTooltip">
                                             (was
                                             <img v-if="rb.oldRank.iconUrl" :src="rb.oldRank.iconUrl" class="cmp-row-icon" alt="">
                                             {{ rb.oldRank.name }})
