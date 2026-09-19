@@ -215,8 +215,16 @@ const vueApp = createApp({
         // NOT turn gold on its own while a sibling prerequisite is still unmet - both (or
         // all) of a target's incoming lines share this same one true/false state, they
         // don't light up independently per edge.
+        //
+        // Same points-cap awareness as canSpend()/cellClasses(): a talent with 0 points in
+        // it whose gate is technically unlocked but unreachable because the level-capped
+        // point total is exhausted must NOT show a gold connector - that arrow reads as
+        // "you can go here right now", which isn't true. An already-invested talent (spent
+        // > 0) keeps its connector gold regardless of the current cap, same invariant as
+        // cellClasses() - its gate was provably open when those points were spent.
         targetGateOpen(tab, talent) {
-            return this.isUnlocked(tab, talent) && this.prereqsMet(talent);
+            if ((this.spent[talent.id] || 0) > 0) return true;
+            return this.isUnlocked(tab, talent) && this.prereqsMet(talent) && this.totalSpent < this.maxTalentPoints;
         },
         // Every already-spent talent in this tab must stay valid (tier unlocked, its own
         // prerequisites still met) after the simulated change - otherwise the change is
