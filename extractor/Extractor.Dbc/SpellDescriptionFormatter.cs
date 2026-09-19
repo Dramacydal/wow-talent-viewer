@@ -31,16 +31,17 @@ namespace Extractor.Dbc;
 /// Armor reduced increases with your level") can't be reduced to one number at extraction
 /// time - this tool has no player character/level anywhere in its data model. Instead of
 /// guessing a reference level, it emits a "{BASE + COEFF * Level}" formula in curly braces
-/// straight into the stored description (BASE = Abs(EffectBasePoints+1), COEFF =
-/// Abs(EffectRealPointsPerLevel) - both signs normalized once here, at generation time, so
-/// the stored formula is plain unsigned arithmetic, never a signed expression). The tree-view
-/// page evaluates it against a user-chosen level slider at render time (rounding COEFF*Level
-/// to a whole number BEFORE adding it to BASE, then never rounding again - see
-/// scaled-formula.js), while the compare page deliberately leaves it unevaluated so build-to-
-/// build diffs compare the formula text itself, not one arbitrary level's number. A $s/$m
+/// straight into the stored description (BASE = EffectBasePoints+1, COEFF =
+/// EffectRealPointsPerLevel - both keep their original sign; Abs() is applied exactly once,
+/// client-side, to the fully-resolved result, matching how the plain non-scaling case already
+/// works - Abs()-ing BASE/COEFF independently would be wrong whenever they have opposite
+/// signs). The tree-view page evaluates it against a user-chosen level slider at render time
+/// (rounding COEFF*Level to a whole number BEFORE adding it to BASE, then Abs() of that sum -
+/// see scaled-formula.js), while the compare page deliberately leaves it unevaluated so build-
+/// to-build diffs compare the formula text itself, not one arbitrary level's number. A $s/$m
 /// effect with a real die-roll range (Spell.EffectDieSides > 1) gets the same "X to Y" range
-/// real client tooltips show, each side following the same rule (baked plain number if there's
-/// no level-scaling at all, "{BASE + COEFF * Level}" formula if there is).
+/// real client tooltips show, each side following the same rule (baked plain Abs()'d number if
+/// there's no level-scaling at all, "{BASE + COEFF * Level}" formula if there is).
 /// </summary>
 public sealed partial class SpellDescriptionFormatter(DbcClient dbcClient, string build)
 {
@@ -165,17 +166,20 @@ public sealed partial class SpellDescriptionFormatter(DbcClient dbcClient, strin
     /// <summary>Builds the render-time formula (or, if there's truly nothing left to defer,
     /// the plain baked number/range) for a $s/$m token whose effect scales with the caster's
     /// level and/or has a real die-roll range - see class remarks for the overall design.
-    /// BASE and COEFF are each Abs()'d once here, independently, so the stored formula is
-    /// plain unsigned arithmetic ("{10.55 + 2.25 * Level}"), never a signed expression the
-    /// render side would have to re-interpret. The op modifier (e.g. "$/1000;S1") is linear,
-    /// so it distributes over BASE and COEFF individually rather than needing to be encoded
-    /// into the formula text itself.</summary>
+    /// BASE and COEFF keep their original sign here - Abs() is applied exactly ONCE, client-
+    /// side, to the fully-resolved (BASE + round(COEFF*Level)) result (see scaled-formula.js),
+    /// matching how the plain non-scaling $s/$m case (and QSpellWork) already works: Abs() of
+    /// the whole expression, not of each term separately. Abs()-ing BASE and COEFF
+    /// independently would be WRONG whenever they have opposite signs - e.g. BASE=10,
+    /// COEFF=-2 at level 60 should resolve to Abs(10 + -120) = 110, not Abs(10) + Abs(-2)*60 =
+    /// 130. The op modifier (e.g. "$/1000;S1") is linear, so it still distributes over BASE
+    /// and COEFF individually without needing encoding into the formula text itself.</summary>
     private static string FormatScaledEffect(SpellRecord spell, int effIdx, float perLevel, int dieSides, Match m)
     {
         var signedBase = spell.EffectBasePoints[effIdx] + 1;
-        double minBase = Math.Abs(signedBase);
-        double maxBase = dieSides > 1 ? Math.Abs(signedBase + dieSides) : minBase;
-        double coeff = Math.Abs(perLevel);
+        double minBase = signedBase;
+        double maxBase = dieSides > 1 ? signedBase + dieSides : minBase;
+        double coeff = perLevel;
 
         if (m.Groups["op"].Success)
         {
@@ -194,11 +198,15 @@ public sealed partial class SpellDescriptionFormatter(DbcClient dbcClient, strin
             }
         }
 
-        // No level term at all - fully known right now, bake a plain number/range exactly
-        // like the non-scaling case does, instead of writing a formula with nothing to defer.
+        // No level term at all - fully known right now, bake a plain (Abs()'d, like the
+        // non-scaling case) number/range instead of writing a formula with nothing to defer.
         string OneSide(double baseValue) => perLevel == 0
-            ? FormatNumber(baseValue)
-            : "{" + FormatNumber(baseValue) + " + " + FormatNumber(coeff) + " * Level}";
+            ? FormatNumber(Math.Abs(baseValue))
+            // "BASE + " is skipped when BASE is exactly 0 - "{1.67 * Level}" instead of
+            // "{0 + 1.67 * Level}", no information lost by omitting a no-op addend.
+            : baseValue == 0
+                ? "{" + FormatNumber(coeff) + " * Level}"
+                : "{" + FormatNumber(baseValue) + " + " + FormatNumber(coeff) + " * Level}";
 
         var min = OneSide(minBase);
         return dieSides > 1 ? $"{min} to {OneSide(maxBase)}" : min;
