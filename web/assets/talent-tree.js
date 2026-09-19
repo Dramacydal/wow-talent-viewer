@@ -19,10 +19,14 @@ const GAP = 22; // ~half the icon size, per feedback - was 6 (too tight)
 const ARROW_LEN = 9; // must match the marker's markerWidth/markerHeight below
 const TOOLTIP_MAX_WIDTH = 280; // must match .tt-tooltip's max-width in talent-tree.css
 
-// The real vanilla cap on total talent points a character can ever have (51 points at max
-// character level 60, 1 per level from 10-60) - same for every class and every build, not
-// derived from data since it's a character-leveling constant, not a talent-tree one.
-const MAX_TALENT_POINTS = 51;
+// Vanilla awards the first talent point at level 10, then one more per level up to 60 (51
+// total at max level) - same for every class and every build, not derived from data since
+// it's a character-leveling constant, not a talent-tree one. Ties the spendable cap to the
+// level slider (see scaled-formula.js for the OTHER thing that slider drives) instead of a
+// flat 51 regardless of level.
+function maxTalentPointsForLevel(level) {
+    return Math.max(0, level - 9);
+}
 
 // Vanilla's talent panel is always 7 tier-rows tall (0-6, gated every 5 points up to 30) -
 // a fixed structural constant of the client's own talent UI, not talent data: every
@@ -69,7 +73,6 @@ const vueApp = createApp({
             // for why the horizontal side needs `left` in one case and `right` in the other.
             tooltipStyle: { left: '0px', top: '0px' },
             settings: loadSettings(),
-            maxTalentPoints: MAX_TALENT_POINTS,
             minCharacterLevel: MIN_CHARACTER_LEVEL,
             maxCharacterLevel: MAX_CHARACTER_LEVEL,
         };
@@ -78,8 +81,17 @@ const vueApp = createApp({
         totalSpent() {
             return Object.values(this.spent).reduce((sum, r) => sum + r, 0);
         },
+        // Tied to the level slider (1 point at 10, 51 at 60) instead of a flat 51 - lowering
+        // the slider below already-spent points doesn't retroactively strip them (see
+        // canSpend()), it only blocks spending further until the total is back under the cap.
+        maxTalentPoints() {
+            return maxTalentPointsForLevel(this.settings.characterLevel);
+        },
+        // Clamped at 0 for display - lowering the level slider below already-spent points
+        // makes this mathematically negative, which would read as a confusing "-19 / 11"
+        // instead of "0 / 11". canSpend() uses totalSpent/maxTalentPoints directly, not this.
         pointsLeft() {
-            return this.maxTalentPoints - this.totalSpent;
+            return Math.max(0, this.maxTalentPoints - this.totalSpent);
         },
         // Backend order (talent_tabs.order_index, with an id tie-break - see
         // .claude-docs/gotchas.md) reflects the real client layout; alphabetical is purely
@@ -192,7 +204,7 @@ const vueApp = createApp({
         },
         canSpend(tab, talent) {
             return (this.spent[talent.id] || 0) < talent.maxRank
-                && this.totalSpent < MAX_TALENT_POINTS
+                && this.totalSpent < this.maxTalentPoints
                 && this.isUnlocked(tab, talent)
                 && this.prereqsMet(talent);
         },
