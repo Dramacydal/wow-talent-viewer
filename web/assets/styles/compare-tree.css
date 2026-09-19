@@ -140,8 +140,11 @@
     flex-shrink: 0;
 }
 
+/* Same reds/greens as .cmp-row-removed/.cmp-row-added (and .tt-tooltip-lock-reason/
+   .tt-cell-rank in the main tree view) - was a lighter #ff8080/#80ff80 before, which read
+   as a different, mismatched red/green next to everything else on this page. */
 .cmp-field-before {
-    color: #ff8080;
+    color: #ff4040;
 }
 
 .cmp-field-arrow {
@@ -149,5 +152,5 @@
 }
 
 .cmp-field-after {
-    color: #80ff80;
+    color: #3fd13f;
 }
