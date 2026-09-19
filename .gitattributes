@@ -1,0 +1,5 @@
+# /mnt/e is the user's real Windows drive - a file touched from the Windows side (editor,
+# tool) can silently flip to CRLF, which then shows up as a spurious full-file diff on the
+# next commit from here (LF). Force LF for text files regardless of which OS last touched
+# them, so line endings never become part of an unrelated diff again.
+* text=auto eol=lf
