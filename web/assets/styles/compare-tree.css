@@ -124,6 +124,9 @@
     color: var(--tt-text-dim);
     font-size: 12px;
     margin-left: auto;
+    /* Tab name is metadata, not part of the removed/changed content itself - don't let the
+       strikethrough from an ancestor .cmp-row-removed bleed through onto it. */
+    text-decoration: none;
 }
 
 /* One changed/added/removed rank within a multi-rank talent's breakdown - same indent
