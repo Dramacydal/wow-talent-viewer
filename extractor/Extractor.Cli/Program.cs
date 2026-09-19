@@ -393,8 +393,14 @@ static int SpikeSpellFull(string clientDir, string build, int spellId)
 
     var durationMs = client.GetSpellDurationMs(build, spell.DurationIndex);
 
+    var formatter = new Extractor.Dbc.SpellDescriptionFormatter(client, build);
+
     Console.WriteLine($"{spell.Name} (spell {spellId}):");
+    Console.WriteLine($"  Description={spell.Description}");
+    Console.WriteLine($"  Formatted={formatter.Format(spell)}");
     Console.WriteLine($"  EffectBasePoints=[{string.Join(",", spell.EffectBasePoints)}]");
+    Console.WriteLine($"  EffectRealPointsPerLevel=[{string.Join(",", spell.EffectRealPointsPerLevel)}]");
+    Console.WriteLine($"  EffectDieSides=[{string.Join(",", spell.EffectDieSides)}]");
     Console.WriteLine($"  EffectAuraPeriod=[{string.Join(",", spell.EffectAuraPeriod)}]");
     Console.WriteLine($"  EffectAmplitude=[{string.Join(",", spell.EffectAmplitude)}]");
     Console.WriteLine($"  EffectRadiusIndex=[{string.Join(",", spell.EffectRadiusIndex)}]");

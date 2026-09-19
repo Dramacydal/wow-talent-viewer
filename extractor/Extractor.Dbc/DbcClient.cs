@@ -10,6 +10,11 @@ namespace Extractor.Dbc;
 /// </summary>
 public sealed class DbcClient
 {
+    // Spell.dbc has exactly 3 effect slots per row for the whole of vanilla (Effect1/2/3-style
+    // fields, arrays below) - one named constant instead of a repeated literal 3 at every
+    // EffectXxx array read, so the "why 3" question only needs answering once.
+    private const int SpellEffectCount = 3;
+
     private readonly global::DBCD.DBCD dbcd;
     private readonly Dictionary<string, global::DBCD.IDBCDStorage> storageCache = new();
 
@@ -153,18 +158,20 @@ public sealed class DbcClient
             NameSubtext: row.Field<string>("NameSubtext_lang"),
             Description: row.Field<string>("Description_lang"),
             SpellIconId: row.Field<int>("SpellIconID"),
-            EffectBasePoints: ReadIntArray(row, "EffectBasePoints", 3),
-            EffectAuraPeriod: ReadIntArray(row, "EffectAuraPeriod", 3),
-            EffectAmplitude: ReadFloatArray(row, "EffectAmplitude", 3),
-            EffectRadiusIndex: ReadIntArray(row, "EffectRadiusIndex", 3),
-            EffectMiscValue: ReadIntArray(row, "EffectMiscValue", 3),
-            EffectPointsPerCombo: ReadFloatArray(row, "EffectPointsPerCombo", 3),
+            EffectBasePoints: ReadIntArray(row, "EffectBasePoints", SpellEffectCount),
+            EffectRealPointsPerLevel: ReadFloatArray(row, "EffectRealPointsPerLevel", SpellEffectCount),
+            EffectDieSides: ReadIntArray(row, "EffectDieSides", SpellEffectCount),
+            EffectAuraPeriod: ReadIntArray(row, "EffectAuraPeriod", SpellEffectCount),
+            EffectAmplitude: ReadFloatArray(row, "EffectAmplitude", SpellEffectCount),
+            EffectRadiusIndex: ReadIntArray(row, "EffectRadiusIndex", SpellEffectCount),
+            EffectMiscValue: ReadIntArray(row, "EffectMiscValue", SpellEffectCount),
+            EffectPointsPerCombo: ReadFloatArray(row, "EffectPointsPerCombo", SpellEffectCount),
             DurationIndex: row.Field<int>("DurationIndex"),
             ProcChance: row.Field<int>("ProcChance"),
             ProcCharges: row.Field<int>("ProcCharges"),
             CumulativeAura: row.Field<int>("CumulativeAura"),
             MaxTargetLevel: hasMaxTargetLevel ? row.Field<int>("MaxTargetLevel") : null,
-            EffectChainTargets: hasChainTargets ? ReadIntArray(row, "EffectChainTargets", 3) : null,
+            EffectChainTargets: hasChainTargets ? ReadIntArray(row, "EffectChainTargets", SpellEffectCount) : null,
             Attributes: row.Field<int>("Attributes"),
             PowerType: row.Field<int>("PowerType"),
             ManaCost: row.Field<int>("ManaCost"),

@@ -28,6 +28,17 @@ namespace Extractor.Dbc;
 /// </summary>
 public sealed partial class SpellDescriptionFormatter(DbcClient dbcClient, string build)
 {
+    // Some $s/$m tokens resolve an effect whose real value scales with the CASTER's level
+    // (Spell.EffectRealPointsPerLevel != 0 - e.g. Rogue "Serrated Blades", whose own
+    // Description literally says "The amount of Armor reduced increases with your level").
+    // This tool has no player character/level anywhere in its data model - a static per-build
+    // extraction can't know "your" level. Fixed at 60 (vanilla's level cap for the vast
+    // majority of these builds) as the least-wrong single number to show, chosen over leaving
+    // the token unresolved. NOT verified against every build back to 0.7.0.3694 - if an early
+    // alpha build turns out to have had a different level cap, this constant would need a
+    // per-build value instead of one global one.
+    private const int ReferenceLevelForPerLevelScaling = 60;
+
     [GeneratedRegex(@"\$(HND|MWS|mws|MWB|mwb|RWB|rwb|MW|mw|AP|RAP|PL)\b")]
     private static partial Regex CombatRatingRegex();
 
@@ -73,7 +84,8 @@ public sealed partial class SpellDescriptionFormatter(DbcClient dbcClient, strin
 
         double? value = char.ToLowerInvariant(letter[0]) switch
         {
-            's' or 'm' => Math.Abs(spell.EffectBasePoints[effIdx] + 1),
+            's' or 'm' => Math.Abs(spell.EffectBasePoints[effIdx] + 1
+                + ReferenceLevelForPerLevelScaling * spell.EffectRealPointsPerLevel[effIdx]),
             'd' => dbcClient.GetSpellDurationMs(build, spell.DurationIndex) is { } ms ? ms / 1000.0 : null,
             'o' => GetPeriodicTotal(spell, effIdx),
             'h' => spell.ProcChance,

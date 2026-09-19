@@ -14,6 +14,8 @@ public sealed record SpellRecord(
     string Description,
     int SpellIconId,
     int[] EffectBasePoints,
+    float[] EffectRealPointsPerLevel,
+    int[] EffectDieSides,
     int[] EffectAuraPeriod,
     float[] EffectAmplitude,
     int[] EffectRadiusIndex,
