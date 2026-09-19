@@ -3,7 +3,10 @@ import './styles/talent-tree.css';
 import './styles/compare-tree.css';
 import { formatAbilityCost, formatAbilityRange, formatAbilityCastTime, formatAbilityCooldown } from './ability-format.js';
 
-// Position/tab/rank-count are properties of the TALENT as a whole, not any one rank.
+// Position/tab are properties of the TALENT as a whole, not any one rank. Rank COUNT is
+// deliberately not listed here even though it's also talent-level - a rank-count change is
+// exactly what the per-rank added/removed sub-blocks already show directly (see groups()),
+// so a separate "Rank count: 5 -> 3" summary line would just repeat that.
 function talentLevelFields(a, b) {
     const fields = [];
     if (a.tier !== b.tier || a.columnIndex !== b.columnIndex) {
@@ -11,9 +14,6 @@ function talentLevelFields(a, b) {
     }
     if (a.tabName !== b.tabName) {
         fields.push({ label: 'Tab', before: a.tabName, after: b.tabName });
-    }
-    if (a.maxRank !== b.maxRank) {
-        fields.push({ label: 'Rank count', before: String(a.maxRank), after: String(b.maxRank) });
     }
     return fields;
 }
