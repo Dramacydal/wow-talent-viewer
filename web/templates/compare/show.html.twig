@@ -9,7 +9,7 @@
         <p><a href="{{ path('home') }}" style="color: var(--tt-text-dim);">&larr; Home</a></p>
         <h1 class="cmp-header">
             {% if class.iconPath %}
-                <img class="cmp-header-icon" src="/class-icons/{{ class.iconPath }}.png" alt="{{ class.name }}">
+                <img class="cmp-header-icon" src="{{ asset('class-icons/' ~ class.iconPath ~ '.png') }}" alt="{{ class.name }}">
             {% endif %}
             <span>
                 <a href="{{ path('talent_tree_page', { buildLabel: buildA.label, classSlug: class.slug }) }}" class="cmp-header-build-link">{{ buildA.label }}</a>

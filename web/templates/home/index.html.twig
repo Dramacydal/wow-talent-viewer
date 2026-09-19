@@ -39,7 +39,7 @@
                    title="{{ class.name }}"
                    {{ class.slug in initialSlugs ? '' : 'hidden' }}>
                     {% if class.iconPath %}
-                        <img class="class-icon-img" src="/class-icons/{{ class.iconPath }}.png" alt="{{ class.name }}">
+                        <img class="class-icon-img" src="{{ asset('class-icons/' ~ class.iconPath ~ '.png') }}" alt="{{ class.name }}">
                     {% else %}
                         <span class="class-icon-label">{{ classAbbreviations[class.slug] ?? class.name|slice(0, 3)|upper }}</span>
                     {% endif %}

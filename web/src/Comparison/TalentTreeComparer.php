@@ -27,6 +27,7 @@ final class TalentTreeComparer
 {
     public function __construct(
         private readonly TalentRepository $talents,
+        private readonly AssetUrlResolver $assets,
     ) {
     }
 
@@ -141,12 +142,12 @@ final class TalentTreeComparer
             'columnIndex' => $talent->getColumnIndex(),
             'maxRank' => $talent->getMaxRank(),
             'ranks' => array_map(
-                static fn (TalentRank $r) => [
+                fn (TalentRank $r) => [
                     'rankIndex' => $r->getRankIndex(),
                     'spellId' => $r->getSpellId(),
                     'name' => $r->getName(),
                     'description' => $r->getDescription(),
-                    'iconUrl' => AssetUrlResolver::iconUrl($r->getIconPath()),
+                    'iconUrl' => $this->assets->iconUrl($r->getIconPath()),
                     'isAbility' => $r->isAbility(),
                     'powerType' => $r->getPowerType(),
                     'powerCost' => $r->getPowerCost(),

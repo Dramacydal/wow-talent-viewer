@@ -30,6 +30,7 @@ class TalentTreeController extends AbstractController
         TalentTabRepository $tabs,
         TalentRepository $talents,
         TalentPrerequisiteRepository $prerequisites,
+        AssetUrlResolver $assets,
     ): JsonResponse {
         $build = $builds->findOneByLabel($buildLabel) ?? throw new NotFoundHttpException("Unknown build \"$buildLabel\"");
         $class = $classes->findOneBySlug($classSlug) ?? throw new NotFoundHttpException("Unknown class \"$classSlug\"");
@@ -56,18 +57,18 @@ class TalentTreeController extends AbstractController
                 'id' => $class->getId(),
                 'slug' => $class->getSlug(),
                 'name' => $class->getName(),
-                'iconUrl' => AssetUrlResolver::classIconUrl($class->getIconPath()),
+                'iconUrl' => $assets->classIconUrl($class->getIconPath()),
             ],
             'tabs' => array_map(
                 fn (TalentTab $tab) => [
                     'id' => $tab->getId(),
                     'name' => $tab->getName(),
-                    'iconUrl' => AssetUrlResolver::iconUrl($tab->getIconPath()),
+                    'iconUrl' => $assets->iconUrl($tab->getIconPath()),
                     'background' => [
-                        'topLeft' => AssetUrlResolver::backgroundUrl($tab->getBackgroundTopLeftPath()),
-                        'topRight' => AssetUrlResolver::backgroundUrl($tab->getBackgroundTopRightPath()),
-                        'bottomLeft' => AssetUrlResolver::backgroundUrl($tab->getBackgroundBottomLeftPath()),
-                        'bottomRight' => AssetUrlResolver::backgroundUrl($tab->getBackgroundBottomRightPath()),
+                        'topLeft' => $assets->backgroundUrl($tab->getBackgroundTopLeftPath()),
+                        'topRight' => $assets->backgroundUrl($tab->getBackgroundTopRightPath()),
+                        'bottomLeft' => $assets->backgroundUrl($tab->getBackgroundBottomLeftPath()),
+                        'bottomRight' => $assets->backgroundUrl($tab->getBackgroundBottomRightPath()),
                     ],
                     'talents' => array_map(
                         fn (Talent $talent) => [
@@ -82,7 +83,7 @@ class TalentTreeController extends AbstractController
                                     'rankIndex' => $rank->getRankIndex(),
                                     'name' => $rank->getName(),
                                     'description' => $rank->getDescription(),
-                                    'iconUrl' => AssetUrlResolver::iconUrl($rank->getIconPath()),
+                                    'iconUrl' => $assets->iconUrl($rank->getIconPath()),
                                     'isAbility' => $rank->isAbility(),
                                     'powerType' => $rank->getPowerType(),
                                     'powerCost' => $rank->getPowerCost(),
