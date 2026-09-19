@@ -25,20 +25,25 @@ namespace Extractor.Dbc;
 /// resolved number) and the combat-rating tokens ($AP, $RAP, $MWB, ...) which scale from
 /// live character stats no static extraction can resolve — replaced with a readable
 /// "&lt;AP&gt;"-style placeholder instead of QSpellWork's approach of silently blanking them.
+///
+/// A $s/$m token whose effect scales with the CASTER's level (Spell.EffectRealPointsPerLevel
+/// != 0 - e.g. Rogue "Serrated Blades", whose own Description literally says "The amount of
+/// Armor reduced increases with your level") can't be reduced to one number at extraction
+/// time - this tool has no player character/level anywhere in its data model. Instead of
+/// guessing a reference level, it emits a "{BASE + COEFF * Level}" formula in curly braces
+/// straight into the stored description (BASE = Abs(EffectBasePoints+1), COEFF =
+/// Abs(EffectRealPointsPerLevel) - both signs normalized once here, at generation time, so
+/// the stored formula is plain unsigned arithmetic, never a signed expression). The tree-view
+/// page evaluates it against a user-chosen level slider at render time (rounding COEFF*Level
+/// to a whole number BEFORE adding it to BASE, then never rounding again - see
+/// scaled-formula.js), while the compare page deliberately leaves it unevaluated so build-to-
+/// build diffs compare the formula text itself, not one arbitrary level's number. A $s/$m
+/// effect with a real die-roll range (Spell.EffectDieSides > 1) gets the same "X to Y" range
+/// real client tooltips show, each side following the same rule (baked plain number if there's
+/// no level-scaling at all, "{BASE + COEFF * Level}" formula if there is).
 /// </summary>
 public sealed partial class SpellDescriptionFormatter(DbcClient dbcClient, string build)
 {
-    // Some $s/$m tokens resolve an effect whose real value scales with the CASTER's level
-    // (Spell.EffectRealPointsPerLevel != 0 - e.g. Rogue "Serrated Blades", whose own
-    // Description literally says "The amount of Armor reduced increases with your level").
-    // This tool has no player character/level anywhere in its data model - a static per-build
-    // extraction can't know "your" level. Fixed at 60 (vanilla's level cap for the vast
-    // majority of these builds) as the least-wrong single number to show, chosen over leaving
-    // the token unresolved. NOT verified against every build back to 0.7.0.3694 - if an early
-    // alpha build turns out to have had a different level cap, this constant would need a
-    // per-build value instead of one global one.
-    private const int ReferenceLevelForPerLevelScaling = 60;
-
     [GeneratedRegex(@"\$(HND|MWS|mws|MWB|mwb|RWB|rwb|MW|mw|AP|RAP|PL)\b")]
     private static partial Regex CombatRatingRegex();
 
@@ -82,10 +87,21 @@ public sealed partial class SpellDescriptionFormatter(DbcClient dbcClient, strin
             spell = other;
         }
 
+        // $s/$m only: an effect that scales with the caster's level, or has a real die-roll
+        // range, can't collapse to one extraction-time number - see class remarks. Everything
+        // else (including the plain, non-scaling $s/$m case) goes through the normal
+        // single-number pipeline below unchanged.
+        if (char.ToLowerInvariant(letter[0]) is 's' or 'm')
+        {
+            var perLevel = spell.EffectRealPointsPerLevel[effIdx];
+            var dieSides = spell.EffectDieSides[effIdx];
+            if (perLevel != 0 || dieSides > 1)
+                return FormatScaledEffect(spell, effIdx, perLevel, dieSides, m);
+        }
+
         double? value = char.ToLowerInvariant(letter[0]) switch
         {
-            's' or 'm' => Math.Abs(spell.EffectBasePoints[effIdx] + 1
-                + ReferenceLevelForPerLevelScaling * spell.EffectRealPointsPerLevel[effIdx]),
+            's' or 'm' => Math.Abs(spell.EffectBasePoints[effIdx] + 1),
             'd' => dbcClient.GetSpellDurationMs(build, spell.DurationIndex) is { } ms ? ms / 1000.0 : null,
             'o' => GetPeriodicTotal(spell, effIdx),
             'h' => spell.ProcChance,
@@ -111,16 +127,7 @@ public sealed partial class SpellDescriptionFormatter(DbcClient dbcClient, strin
 
         lastNumericValue = value;
 
-        // Whole numbers print without a decimal point (matches how these appear in the real
-        // client tooltip); non-whole (e.g. "$/1000;S1" producing 0.5 seconds) keep one decimal.
-        var rounded = Math.Round(value.Value, 2);
-        // InvariantCulture explicitly: this text goes into the database, not straight to a
-        // user's screen, and must not depend on the machine's locale — a run on a
-        // Russian-locale Windows box (comma decimal separator) produced "0,1 sec" instead of
-        // "0.1 sec" before this fix.
-        var formatted = rounded == Math.Floor(rounded)
-            ? ((long)rounded).ToString(System.Globalization.CultureInfo.InvariantCulture)
-            : rounded.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture);
+        var formatted = FormatNumber(value.Value);
 
         // Bare "$d"/"$<spellId>d" (no /N or *N modifier) spells out "N seconds" — matches
         // QSpellWork exactly (always "seconds", even for 1 — a real, if grammatically odd,
@@ -141,6 +148,61 @@ public sealed partial class SpellDescriptionFormatter(DbcClient dbcClient, strin
 
     private static bool FollowedByTheWordSeconds(string sourceText, Match m) =>
         SecondsWordRegex().IsMatch(sourceText[(m.Index + m.Length)..]);
+
+    // Whole numbers print without a decimal point (matches how these appear in the real client
+    // tooltip); non-whole (e.g. "$/1000;S1" producing 0.5 seconds) keep up to two decimals.
+    // InvariantCulture explicitly: this text goes into the database, not straight to a user's
+    // screen, and must not depend on the machine's locale - a run on a Russian-locale Windows
+    // box (comma decimal separator) produced "0,1 sec" instead of "0.1 sec" before this fix.
+    private static string FormatNumber(double value)
+    {
+        var rounded = Math.Round(value, 2);
+        return rounded == Math.Floor(rounded)
+            ? ((long)rounded).ToString(System.Globalization.CultureInfo.InvariantCulture)
+            : rounded.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture);
+    }
+
+    /// <summary>Builds the render-time formula (or, if there's truly nothing left to defer,
+    /// the plain baked number/range) for a $s/$m token whose effect scales with the caster's
+    /// level and/or has a real die-roll range - see class remarks for the overall design.
+    /// BASE and COEFF are each Abs()'d once here, independently, so the stored formula is
+    /// plain unsigned arithmetic ("{10.55 + 2.25 * Level}"), never a signed expression the
+    /// render side would have to re-interpret. The op modifier (e.g. "$/1000;S1") is linear,
+    /// so it distributes over BASE and COEFF individually rather than needing to be encoded
+    /// into the formula text itself.</summary>
+    private static string FormatScaledEffect(SpellRecord spell, int effIdx, float perLevel, int dieSides, Match m)
+    {
+        var signedBase = spell.EffectBasePoints[effIdx] + 1;
+        double minBase = Math.Abs(signedBase);
+        double maxBase = dieSides > 1 ? Math.Abs(signedBase + dieSides) : minBase;
+        double coeff = Math.Abs(perLevel);
+
+        if (m.Groups["op"].Success)
+        {
+            var opval = double.Parse(m.Groups["opval"].Value, System.Globalization.CultureInfo.InvariantCulture);
+            if (m.Groups["op"].Value == "/")
+            {
+                minBase /= opval;
+                maxBase /= opval;
+                coeff /= opval;
+            }
+            else
+            {
+                minBase *= opval;
+                maxBase *= opval;
+                coeff *= opval;
+            }
+        }
+
+        // No level term at all - fully known right now, bake a plain number/range exactly
+        // like the non-scaling case does, instead of writing a formula with nothing to defer.
+        string OneSide(double baseValue) => perLevel == 0
+            ? FormatNumber(baseValue)
+            : "{" + FormatNumber(baseValue) + " + " + FormatNumber(coeff) + " * Level}";
+
+        var min = OneSide(minBase);
+        return dieSides > 1 ? $"{min} to {OneSide(maxBase)}" : min;
+    }
 
     /// <summary>Total effect value over a periodic effect's full duration — QSpellWork's
     /// getRealDuration() * (basePoints+1): duration divided by tick period, times the
