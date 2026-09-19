@@ -170,7 +170,7 @@ const compareApp = createApp({
         <template v-else-if="data">
             <section class="cmp-section">
                 <button class="cmp-section-header" @click="toggleSection('added')">
-                    <span class="cmp-section-toggle">{{ collapsed.added ? '▸' : '▾' }}</span>
+                    <svg class="cmp-section-toggle" :class="{ 'cmp-section-toggle-open': !collapsed.added }" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><polyline points="9 6 15 12 9 18"></polyline></svg>
                     New talents ({{ addedRows.length }})
                 </button>
                 <ul v-if="!collapsed.added" class="cmp-row-list">
@@ -185,7 +185,7 @@ const compareApp = createApp({
 
             <section class="cmp-section">
                 <button class="cmp-section-header" @click="toggleSection('changed')">
-                    <span class="cmp-section-toggle">{{ collapsed.changed ? '▸' : '▾' }}</span>
+                    <svg class="cmp-section-toggle" :class="{ 'cmp-section-toggle-open': !collapsed.changed }" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><polyline points="9 6 15 12 9 18"></polyline></svg>
                     Changed talents ({{ changedRows.length }})
                 </button>
                 <ul v-if="!collapsed.changed" class="cmp-row-list">
@@ -210,7 +210,7 @@ const compareApp = createApp({
 
             <section class="cmp-section">
                 <button class="cmp-section-header" @click="toggleSection('removed')">
-                    <span class="cmp-section-toggle">{{ collapsed.removed ? '▸' : '▾' }}</span>
+                    <svg class="cmp-section-toggle" :class="{ 'cmp-section-toggle-open': !collapsed.removed }" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><polyline points="9 6 15 12 9 18"></polyline></svg>
                     Removed talents ({{ removedRows.length }})
                 </button>
                 <ul v-if="!collapsed.removed" class="cmp-row-list">
