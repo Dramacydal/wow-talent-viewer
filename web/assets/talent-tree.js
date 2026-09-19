@@ -1,6 +1,7 @@
 import { createApp } from 'vue';
 import './styles/talent-tree.css';
 import { formatAbilityCost, formatAbilityRange, formatAbilityCastTime, formatAbilityCooldown } from './ability-format.js';
+import { resolveScaledFormulas } from './scaled-formula.js';
 
 /**
  * Interactive vanilla talent tree: click-to-spend grid per tab (tier x column, 4 columns
@@ -43,7 +44,9 @@ function cellCenter(tier, columnIndex) {
 // directly - same reactive object Vue itself uses, so the change is picked up immediately
 // with no event-bus/custom-event plumbing needed.
 const SETTINGS_STORAGE_KEY = 'tt-settings';
-const DEFAULT_SETTINGS = { sortTabsAlphabetically: false, showTalentIdInTooltip: false };
+const MIN_CHARACTER_LEVEL = 10; // vanilla's earliest talent-eligible level
+const MAX_CHARACTER_LEVEL = 60;
+const DEFAULT_SETTINGS = { sortTabsAlphabetically: false, showTalentIdInTooltip: false, characterLevel: MAX_CHARACTER_LEVEL };
 
 function loadSettings() {
     try {
@@ -67,6 +70,8 @@ const vueApp = createApp({
             tooltipStyle: { left: '0px', top: '0px' },
             settings: loadSettings(),
             maxTalentPoints: MAX_TALENT_POINTS,
+            minCharacterLevel: MIN_CHARACTER_LEVEL,
+            maxCharacterLevel: MAX_CHARACTER_LEVEL,
         };
     },
     computed: {
@@ -104,8 +109,8 @@ const vueApp = createApp({
                 talentId: talent.sourceTalentId,
                 spent,
                 maxRank: talent.maxRank,
-                description: mainRank.description,
-                nextDescription: nextRank?.description ?? null,
+                description: resolveScaledFormulas(mainRank.description, this.settings.characterLevel),
+                nextDescription: nextRank ? resolveScaledFormulas(nextRank.description, this.settings.characterLevel) : null,
                 canLearn: this.canSpend(tab, talent),
                 lockReasons: this.lockReasons(tab, talent),
                 isAbility: mainRank.isAbility,
@@ -439,6 +444,11 @@ const vueApp = createApp({
                             {{ tab.name }}: {{ totalSpentInTab(tab) }}
                         </span>
                         <span class="tt-summary-total">Points left: {{ pointsLeft }} / {{ maxTalentPoints }}</span>
+                        <label class="tt-level-picker">
+                            Level:
+                            <input type="range" :min="minCharacterLevel" :max="maxCharacterLevel" v-model.number="settings.characterLevel">
+                            <span class="tt-level-picker-value">{{ settings.characterLevel }}</span>
+                        </label>
                         <button class="tt-reset" @click="resetAll">Reset</button>
                     </div>
                 </header>

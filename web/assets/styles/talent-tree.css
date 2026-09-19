@@ -187,6 +187,25 @@ body {
     color: var(--tt-gold);
 }
 
+.tt-level-picker {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    color: var(--tt-text-dim);
+}
+
+.tt-level-picker input[type="range"] {
+    accent-color: var(--tt-gold);
+}
+
+.tt-level-picker-value {
+    color: var(--tt-gold);
+    font-weight: bold;
+    min-width: 1.5em;
+    text-align: right;
+}
+
 .tt-reset {
     background: #2a1f14;
     border: 1px solid var(--tt-panel-border);
