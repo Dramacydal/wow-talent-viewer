@@ -103,6 +103,7 @@ final class TalentTreeComparer
     {
         return $a->getSpellId() !== $b->getSpellId()
             || $a->getName() !== $b->getName()
+            || $a->getIconPath() !== $b->getIconPath()
             || $a->getDescription() !== $b->getDescription()
             || $a->isAbility() !== $b->isAbility()
             || $a->getPowerType() !== $b->getPowerType()
