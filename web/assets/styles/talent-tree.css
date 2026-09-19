@@ -70,8 +70,9 @@ body {
     border-radius: 4px;
     width: 30px;
     height: 30px;
-    font-size: 16px;
-    line-height: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     cursor: pointer;
 }
 

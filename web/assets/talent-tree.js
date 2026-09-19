@@ -17,6 +17,11 @@ const GAP = 22; // ~half the icon size, per feedback - was 6 (too tight)
 const ARROW_LEN = 9; // must match the marker's markerWidth/markerHeight below
 const TOOLTIP_MAX_WIDTH = 280; // must match .tt-tooltip's max-width in talent-tree.css
 
+// The real vanilla cap on total talent points a character can ever have (51 points at max
+// character level 60, 1 per level from 10-60) - same for every class and every build, not
+// derived from data since it's a character-leveling constant, not a talent-tree one.
+const MAX_TALENT_POINTS = 51;
+
 // Vanilla's talent panel is always 7 tier-rows tall (0-6, gated every 5 points up to 30) -
 // a fixed structural constant of the client's own talent UI, not talent data: every
 // populated tab across the whole extracted dataset has maxTier === 6. Used unconditionally
@@ -99,11 +104,15 @@ const vueApp = createApp({
             // for why the horizontal side needs `left` in one case and `right` in the other.
             tooltipStyle: { left: '0px', top: '0px' },
             settings: loadSettings(),
+            maxTalentPoints: MAX_TALENT_POINTS,
         };
     },
     computed: {
         totalSpent() {
             return Object.values(this.spent).reduce((sum, r) => sum + r, 0);
+        },
+        pointsLeft() {
+            return this.maxTalentPoints - this.totalSpent;
         },
         // Backend order (talent_tabs.order_index, with an id tie-break - see
         // .claude-docs/gotchas.md) reflects the real client layout; alphabetical is purely
@@ -130,7 +139,7 @@ const vueApp = createApp({
             const nextRank = (spent > 0 && spent < talent.maxRank) ? talent.ranks[spent] : null;
             return {
                 name: mainRank.name,
-                talentId: talent.id,
+                talentId: talent.sourceTalentId,
                 spent,
                 maxRank: talent.maxRank,
                 description: mainRank.description,
@@ -215,7 +224,10 @@ const vueApp = createApp({
             return reasons;
         },
         canSpend(tab, talent) {
-            return (this.spent[talent.id] || 0) < talent.maxRank && this.isUnlocked(tab, talent) && this.prereqsMet(talent);
+            return (this.spent[talent.id] || 0) < talent.maxRank
+                && this.totalSpent < MAX_TALENT_POINTS
+                && this.isUnlocked(tab, talent)
+                && this.prereqsMet(talent);
         },
         // Whether a talent's gate is fully open (tier unlocked AND *every* one of its
         // prerequisites met - not just maxRank), independent of whether it's already
@@ -268,6 +280,13 @@ const vueApp = createApp({
         cellClasses(tab, talent) {
             const spent = this.spent[talent.id] || 0;
             if (spent === talent.maxRank) return { 'tt-maxed': true };
+            // Already has points in it (e.g. 1/5) - its gate must already be open (tier +
+            // prerequisites), by invariant, so its look is fixed as "available" from here
+            // regardless of the global 51-point cap. Running out of points elsewhere must
+            // NOT retroactively change how an already-invested talent looks (ring color,
+            // rank-count color) - only genuinely untouched/unreachable talents (spent===0)
+            // go through canSpend's cap check and can render as locked/grayscale.
+            if (spent > 0) return { 'tt-available': true };
             if (this.canSpend(tab, talent)) return { 'tt-available': true };
             return { 'tt-locked': true };
         },
@@ -454,7 +473,7 @@ const vueApp = createApp({
                             <img v-if="tab.iconUrl" :src="tab.iconUrl" width="20" height="20" alt="">
                             {{ tab.name }}: {{ totalSpentInTab(tab) }}
                         </span>
-                        <span class="tt-summary-total">Total: {{ totalSpent }}</span>
+                        <span class="tt-summary-total">Points left: {{ pointsLeft }} / {{ maxTalentPoints }}</span>
                         <button class="tt-reset" @click="resetAll">Reset</button>
                     </div>
                 </header>

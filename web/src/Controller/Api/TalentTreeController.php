@@ -66,6 +66,7 @@ class TalentTreeController extends AbstractController
                     'talents' => array_map(
                         fn (Talent $talent) => [
                             'id' => $talent->getId(),
+                            'sourceTalentId' => $talent->getSourceTalentId(),
                             'tier' => $talent->getTier(),
                             'columnIndex' => $talent->getColumnIndex(),
                             'maxRank' => $talent->getMaxRank(),
