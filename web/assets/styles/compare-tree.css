@@ -101,7 +101,13 @@
 }
 
 .cmp-row-added { color: #3fd13f; }
-.cmp-row-removed { color: #ff4040; text-decoration: line-through; text-decoration-color: rgba(255, 64, 64, 0.5); }
+/* Strikethrough goes on .cmp-row-hoverable (icon+name only), NOT on .cmp-row-removed itself -
+   a descendant's `text-decoration: none` does not reliably suppress a line drawn by an
+   ancestor (the line is painted across the ancestor's whole inline box, not per-element), so
+   putting the decoration here would keep bleeding through onto the sibling .cmp-row-tab
+   (tab name - metadata, not part of the removed content) no matter what .cmp-row-tab sets. */
+.cmp-row-removed { color: #ff4040; }
+.cmp-row-removed .cmp-row-hoverable { text-decoration: line-through; text-decoration-color: rgba(255, 64, 64, 0.5); }
 .cmp-row-changed { color: var(--tt-text); }
 
 .cmp-row-rankcount {
@@ -124,9 +130,6 @@
     color: var(--tt-text-dim);
     font-size: 12px;
     margin-left: auto;
-    /* Tab name is metadata, not part of the removed/changed content itself - don't let the
-       strikethrough from an ancestor .cmp-row-removed bleed through onto it. */
-    text-decoration: none;
 }
 
 /* One changed/added/removed rank within a multi-rank talent's breakdown - same indent
