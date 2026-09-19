@@ -76,6 +76,15 @@
     cursor: default;
 }
 
+/* Wraps just the icon+name - deliberately NOT the whole .cmp-row - so the hover/tooltip
+   trigger area excludes sibling content like the "(N)" rank-count badge or the tab name. */
+.cmp-row-hoverable {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+}
+
 .cmp-row-icon {
     width: 1.3em;
     height: 1.3em;
@@ -87,10 +96,28 @@
 .cmp-row-removed { color: #ff4040; text-decoration: line-through; text-decoration-color: rgba(255, 64, 64, 0.5); }
 .cmp-row-changed { color: var(--tt-text); }
 
+.cmp-row-rankcount {
+    color: var(--tt-text-dim);
+    font-size: 12px;
+}
+
 .cmp-row-tab {
     color: var(--tt-text-dim);
     font-size: 12px;
     margin-left: auto;
+}
+
+/* One changed/added/removed rank within a multi-rank talent's breakdown - same indent
+   treatment as .cmp-field-list, so its own nested .cmp-field-list (the rank's field diffs)
+   ends up doubly-indented relative to the group header, for free, just by composition. */
+.cmp-rank-block {
+    padding-left: 30px;
+    border-left: 1px solid var(--tt-panel-border);
+    margin-top: 4px;
+}
+
+.cmp-rank-block .cmp-row {
+    padding: 2px 0;
 }
 
 .cmp-field-list {
