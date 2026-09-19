@@ -187,6 +187,14 @@ const compareApp = createApp({
                 ? { right: `${window.innerWidth - event.clientX + 16}px`, top: `${event.clientY + 16}px` }
                 : { left: `${event.clientX + 16}px`, top: `${event.clientY + 16}px` };
         },
+        // A removed (red) word in the inline description diff shows the OLD rank's tooltip,
+        // an added (green) word shows the NEW rank's - an 'equal' word shows nothing (leaves
+        // whatever tooltip state was already there, which mouseleave on the previous
+        // removed/added span already cleared).
+        showDiffTooltip(seg, oldRank, newRank, event) {
+            if (seg.type === 'removed') this.showTooltip(oldRank, event);
+            else if (seg.type === 'added') this.showTooltip(newRank, event);
+        },
         hideTooltip() {
             this.hoveredRank = null;
         },
@@ -247,7 +255,7 @@ const compareApp = createApp({
                                 <li v-for="f in g.rankBlocks[0].fields" :key="f.label" class="cmp-field-row">
                                     <span class="cmp-field-label">{{ f.label }}:</span>
                                     <template v-if="f.diff">
-                                        <span class="cmp-diff-text"><template v-for="(seg, si) in f.diff" :key="si"><span :class="{ 'cmp-diff-removed': seg.type === 'removed', 'cmp-diff-added': seg.type === 'added' }">{{ seg.text }}</span><template v-if="si < f.diff.length - 1">{{ ' ' }}</template></template></span>
+                                        <span class="cmp-diff-text"><template v-for="(seg, si) in f.diff" :key="si"><span :class="{ 'cmp-diff-removed': seg.type === 'removed', 'cmp-diff-added': seg.type === 'added' }" @mouseenter="showDiffTooltip(seg, g.rankBlocks[0].oldRank, g.rankBlocks[0].rank, $event)" @mousemove="showDiffTooltip(seg, g.rankBlocks[0].oldRank, g.rankBlocks[0].rank, $event)" @mouseleave="hideTooltip">{{ seg.text }}</span><template v-if="si < f.diff.length - 1">{{ ' ' }}</template></template></span>
                                     </template>
                                     <template v-else>
                                         <span class="cmp-field-before">{{ f.before }}</span>
@@ -275,7 +283,7 @@ const compareApp = createApp({
                                         <li v-for="f in rb.fields" :key="f.label" class="cmp-field-row">
                                             <span class="cmp-field-label">{{ f.label }}:</span>
                                             <template v-if="f.diff">
-                                                <span class="cmp-diff-text"><template v-for="(seg, si) in f.diff" :key="si"><span :class="{ 'cmp-diff-removed': seg.type === 'removed', 'cmp-diff-added': seg.type === 'added' }">{{ seg.text }}</span><template v-if="si < f.diff.length - 1">{{ ' ' }}</template></template></span>
+                                                <span class="cmp-diff-text"><template v-for="(seg, si) in f.diff" :key="si"><span :class="{ 'cmp-diff-removed': seg.type === 'removed', 'cmp-diff-added': seg.type === 'added' }" @mouseenter="showDiffTooltip(seg, rb.oldRank, rb.rank, $event)" @mousemove="showDiffTooltip(seg, rb.oldRank, rb.rank, $event)" @mouseleave="hideTooltip">{{ seg.text }}</span><template v-if="si < f.diff.length - 1">{{ ' ' }}</template></template></span>
                                             </template>
                                             <template v-else>
                                                 <span class="cmp-field-before">{{ f.before }}</span>
